@@ -1,0 +1,7 @@
+font.size: 18
+font.family: DejaVu Sans
+figure.autolayout: False
+xtick.bottom: True
+xtick.direction: in
+ytick.direction: in
+text.usetex: True
