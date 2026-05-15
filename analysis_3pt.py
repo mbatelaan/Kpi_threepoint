@@ -204,7 +204,7 @@ def plot_corr(bsdata, plotname="", plotdir=Path("./"), ylim=False, v_line=0):
     return
 
 
-def plot_corr_log(bsdata, plotname=""):
+def plot_corr_log(bsdata, plotname="", plotdir=Path("./")):
     time = np.arange(0, np.shape(bsdata)[1])
     yavg = np.average(bsdata, axis=0)
     ystd = np.std(bsdata, axis=0)
@@ -222,7 +222,7 @@ def plot_corr_log(bsdata, plotname=""):
     )
     axs.axvline(10, color="k", linewidth=1, linestyle="--")
     axs.set_yscale("log")
-    plt.savefig(f"{plotname}.pdf")
+    plt.savefig(plotdir / f"{plotname}.pdf")
     plt.close()
     return
 
@@ -775,7 +775,9 @@ def main_meson3():
     bsdata_1a = np.sqrt(np.einsum("ij,ij->ij", bsdata_1, denominator1))
     bsdata_1b = np.einsum(
         # "ij,i->ij", bsdata_1a, energy_factor / energy_factor2 * norm_factor
-        "ij,i->ij", bsdata_1a, energy_factor
+        "ij,i->ij",
+        bsdata_1a,
+        energy_factor,
     )
     plot_corr(bsdata_1b, plotname="3pt_pi-k_double-ratio", plotdir=plotdir, v_line=10)
     plot_corr(
@@ -799,7 +801,9 @@ def main_meson3():
     bsdata_dbl_fit1 = np.sqrt(np.einsum("ij,i->ij", bsdata_dbl_fit, denominator_fit))
     bsdata_dbl_fit2 = np.einsum(
         # "ij,i->ij", bsdata_dbl_fit1, energy_factor / energy_factor2 * norm_factor
-        "ij,i->ij", bsdata_dbl_fit1, energy_factor
+        "ij,i->ij",
+        bsdata_dbl_fit1,
+        energy_factor,
     )
     plot_corr(
         bsdata_dbl_fit2,
@@ -892,12 +896,16 @@ def main_meson4():
     filename_p = "./threept_run4/meson-2pt_TBC/messpec/32x64/slrc/kp121040kp121040/sh_gij_p21_90-sh_gij_p21_90/p+0+0+0/messpec_g5-g5_495cfgs.pickle"
     with open(filename_p, "rb") as file_in:
         data_pion = pickle.load(file_in)
-    bsdata_pion_twist = bootstrap(data_pion, config_ax=0, nboot=nboot, nbin=nbin)[:, :, 0]
+    bsdata_pion_twist = bootstrap(data_pion, config_ax=0, nboot=nboot, nbin=nbin)[
+        :, :, 0
+    ]
 
     filename_k = "./threept_run4/meson-2pt_TBC/messpec/32x64/slrc/kp121040kp120620/sh_gij_p21_90-sh_gij_p21_90/p+0+0+0/messpec_g5-g5_495cfgs.pickle"
     with open(filename_k, "rb") as file_in:
         data_kaon = pickle.load(file_in)
-    bsdata_kaon_twist = bootstrap(data_kaon, config_ax=0, nboot=nboot, nbin=nbin)[:, :, 0]
+    bsdata_kaon_twist = bootstrap(data_kaon, config_ax=0, nboot=nboot, nbin=nbin)[
+        :, :, 0
+    ]
 
     # ======================================================================
     # Ratios
@@ -914,7 +922,9 @@ def main_meson4():
     bsdata_7a = np.sqrt(np.einsum("ij,ij->ij", numerator, denominator))
     # quad_ratio_bs = np.einsum("ij,i->ij", bsdata_7a, energy_factor / energy_factor2)
     quad_ratio_bs = np.einsum("ij,i->ij", bsdata_7a, energy_factor / norm_factor)
-    plot_corr(quad_ratio_bs, plotname="3pt_pi-k_quad-ratio_twist", plotdir=plotdir, v_line=10)
+    plot_corr(
+        quad_ratio_bs, plotname="3pt_pi-k_quad-ratio_twist", plotdir=plotdir, v_line=10
+    )
     plot_corr(
         quad_ratio_bs,
         plotname="3pt_pi-k_quad-ratio_ylim_twist",
@@ -930,10 +940,20 @@ def main_meson4():
     bsdata_1a = np.sqrt(np.einsum("ij,ij->ij", bsdata_1, denominator1))
     bsdata_1b = np.einsum(
         # "ij,i->ij", bsdata_1a, energy_factor / energy_factor2 * norm_factor
-        "ij,i->ij", bsdata_1a, energy_factor
+        "ij,i->ij",
+        bsdata_1a,
+        energy_factor,
     )
-    plot_corr(bsdata_1b, plotname="3pt_pi-k_double-ratio_twist", plotdir=plotdir, v_line=10)
-    plot_corr(bsdata_1b, plotname="3pt_pi-k_double-ratio_twist_ylim", plotdir=plotdir, v_line=10, ylim=(0.2,0.37))
+    plot_corr(
+        bsdata_1b, plotname="3pt_pi-k_double-ratio_twist", plotdir=plotdir, v_line=10
+    )
+    plot_corr(
+        bsdata_1b,
+        plotname="3pt_pi-k_double-ratio_twist_ylim",
+        plotdir=plotdir,
+        v_line=10,
+        ylim=(0.2, 0.37),
+    )
 
     # # double ratio with fit params divided out
     # t_vals = np.arange(0, tmax)
@@ -957,21 +977,31 @@ def main_meson4():
     #     # ylim=(0.95, 1.05),
     # )
 
-    fit_correlator(bsdata_1b, plotdir, name="3pt_double_kpi_fit_twist", ylim=(0.2,0.37))
-    fit_correlator(quad_ratio_bs, plotdir, name="3pt_quad_kpi_fit_twist", ylim=(0.35, 0.5))
+    fit_correlator(
+        bsdata_1b, plotdir, name="3pt_double_kpi_fit_twist", ylim=(0.2, 0.37)
+    )
+    fit_correlator(
+        quad_ratio_bs, plotdir, name="3pt_quad_kpi_fit_twist", ylim=(0.35, 0.5)
+    )
 
     # fit_correlator(
     #     bsdata_dbl_fit2, plotdir, name="3pt_double_kpi_fitparam_fit_twist"
     # )
-    
+
     return
 
 
-def fit_correlator(fit_corr, plotdir, name="", ylim=False):
+def fit_correlator(
+    fit_corr,
+    plotdir,
+    name="",
+    ylabel=r"$R(t)$",
+    ylim=False,
+    time_limits=np.array([[[11, 15], [13, 20]]]),
+):
     # ======================================================================
     # Fitting the 3pt function
     const_function = ff.initffncs("Constant")
-    time_limits = np.array([[[11, 15], [13, 20]]])
     [fitlist_kpi] = fit_loop_new(
         fit_corr,
         [const_function],
@@ -1019,14 +1049,15 @@ def fit_correlator(fit_corr, plotdir, name="", ylim=False):
     axs.axvline(10, color="k", linewidth=1, linestyle="--")
 
     plt.xlabel(r"$t/a$")
-    plt.ylabel(r"$R(t)$", fontsize="small")
+    plt.ylabel(ylabel, fontsize="small")
     plt.legend(fontsize="x-small")
     if ylim:
         axs.set_ylim(ylim)
     plt.savefig(plotdir / f"{name}.pdf")
     # plt.savefig(plotdir / f"{name}_zoom.pdf")
     plt.close()
-    return
+
+    return fitlist_kpi
 
 
 def main_baryon():
