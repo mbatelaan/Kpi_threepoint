@@ -46,6 +46,7 @@ def main_meson4():
     nboot = 500
     nbin = 1
 
+    # ======================================================================
     # Open two-point function data:
     twopt_datadir = Path(
         "/Users/mbatelaan/Research/Adelaide2026/analysis/six_point_fn/data/pickles/run1_meson/"
@@ -67,6 +68,8 @@ def main_meson4():
     kaon_fit = fitlist_kaon_cosh[high_weight_kaon]["param"]
     print(np.average(kaon_mass))
 
+    # ----------------------------------------------------------------------
+    # Twisted energies
     pion_utwist_file = plotdir / (f"time_window_loop_pion_u-twist_Cosh.pkl")
     kaon_stwist_file = plotdir / (f"time_window_loop_kaon_s-twist_Cosh.pkl")
     if pion_utwist_file.is_file():
@@ -188,7 +191,8 @@ def main_meson4():
 
     # ======================================================================
     # Ratios
-    tmax = 32
+    # tmax = 32
+    tmax = 50
     tau = 10
     # energy_factor = np.sqrt(4 * pion_mass * kaon_mass)
     energy_factor_utwist = np.sqrt(4 * pion_utwist_energy * kaon_mass)
@@ -197,8 +201,8 @@ def main_meson4():
     energy_factor2 = pion_mass + kaon_mass
     norm_factor = 0.863
 
-    utwist = False
-    stwist = False
+    utwist = True
+    stwist = True
     bothtwist = True
     # ======================================================================
     # Twisted u-quark
@@ -331,33 +335,58 @@ def main_meson4():
 
         # ----------------------------------------------------------------------
         # Ratio with two 3-point functions divided by two 2-point functions
-        denominator1 = np.abs(bsdata_kaon_stwist[:, :tmax] * bsdata_pion[:, :tmax]) ** (
-            -1
-        )
-        bsdata_1 = np.abs(bsdata_p_k_stwist[:, :tmax] * bsdata_k_p_stwist[:, :tmax])
-        bsdata_1a = np.sqrt(np.einsum("ij,ij->ij", bsdata_1, denominator1))
-        bsdata_1b = np.einsum(
+        denominator1 = (bsdata_kaon_stwist[:, :tmax] * bsdata_pion[:, :tmax]) ** (-1)
+        bsdata_1 = bsdata_p_k_stwist[:, :tmax] * bsdata_k_p_stwist[:, :tmax]
+        bsdata_1a = np.sqrt(np.abs(np.einsum("ij,ij->ij", bsdata_1, denominator1)))
+        dbl_ratio_bs = np.einsum(
             "ij,i->ij",
             bsdata_1a,
             energy_factor_stwist * norm_factor,
         )
         plot_corr(
-            bsdata_1b,
+            dbl_ratio_bs,
             plotname="3pt_pi-k_double-ratio_stwist",
             plotdir=plotdir,
             v_line=10,
         )
         plot_corr(
-            bsdata_1b,
+            dbl_ratio_bs,
             plotname="3pt_pi-k_double-ratio_stwist_ylim",
             plotdir=plotdir,
             v_line=10,
             ylim=(0.2, 0.37),
         )
 
+        # ----------------------------------------------------------------------
+        # double ratio with fit params divided out
+        t_vals = np.arange(0, tmax)
+        bsdata_dbl_fit = np.abs(
+            bsdata_p_k_stwist[:, :tmax]
+            * bsdata_k_p_stwist[:, :tmax]
+            * np.exp(np.einsum("i,j->ij", pion_mass, t_vals))
+            * np.exp(np.einsum("i,j->ij", kaon_stwist_energy, t_vals))
+        )
+        denominator_fit = (kaon_fit_stwist[:, 0] * pion_fit[:, 0] / 4) ** (-1)
+        bsdata_dbl_fit1 = np.sqrt(
+            np.einsum("ij,i->ij", bsdata_dbl_fit, denominator_fit)
+        )
+        bsdata_dbl_fit2 = np.einsum(
+            "ij,i->ij",
+            bsdata_dbl_fit1,
+            energy_factor_stwist * norm_factor,
+        )
+        plot_corr(
+            bsdata_dbl_fit2,
+            plotname="3pt_pi-k_double-ratio_stwist_fitparam",
+            plotdir=plotdir,
+            v_line=10,
+            ylim=(0.2, 0.37),
+        )
+
+        # ----------------------------------------------------------------------
         # Fits
         fit_correlator(
-            bsdata_1b,
+            dbl_ratio_bs,
             plotdir,
             name="3pt_double_kpi_fit_stwist",
             ylabel=r"$R_1(t)$",
@@ -369,6 +398,14 @@ def main_meson4():
             plotdir,
             name="3pt_quad_kpi_fit_stwist",
             ylabel=r"$R_2(t)$",
+            ylim=(0.315, 0.33),  # ,ylim=(0.35, 0.5)
+            time_limits=np.array([[[11, 20], [13, 30]]]),
+        )
+        fit_correlator(
+            bsdata_dbl_fit2,
+            plotdir,
+            name="3pt_double_fitparam_kpi_fit_stwist",
+            ylabel=r"$R_3(t)$",
             ylim=(0.315, 0.33),  # ,ylim=(0.35, 0.5)
             time_limits=np.array([[[11, 20], [13, 30]]]),
         )

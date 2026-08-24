@@ -17,6 +17,8 @@ from analysis_3pt import plot_corr_log
 from analysis_3pt import plot_eff_corr
 from analysis_3pt import fit_correlator
 
+from gevpanalysis.common import read_correlators_complex_mesons_gamma
+
 _metadata = {"Author": "Mischa Batelaan", "Creator": __file__}
 _colors = [
     "#377eb8",
@@ -263,6 +265,7 @@ def main_meson4():
     energy_factor2 = pion_energy + kaon_energy
     norm_factor = 0.863
 
+    # ----------------------------------------------------------------------
     # Ratio with all four 3-point functions
     denominator = np.abs(bsdata_k_k[:, :tmax] * bsdata_p_p[:, :tmax]) ** (-1)
     numerator = np.abs(bsdata_p_k[:, :tmax] * bsdata_k_p[:, :tmax])
@@ -281,6 +284,7 @@ def main_meson4():
         # ylim=(0.99, 1.02),
     )
 
+    # ----------------------------------------------------------------------
     # Ratio with two 3-point functions divided by two 2-point functions
     denominator1 = np.abs(bsdata_kaon[:, :tmax] * bsdata_pion[:, :tmax]) ** (-1)
     bsdata_1 = np.abs(bsdata_p_k[:, :tmax] * bsdata_k_p[:, :tmax])
@@ -301,6 +305,7 @@ def main_meson4():
         # ylim=(0.95, 1.04),
     )
 
+    # ----------------------------------------------------------------------
     # double ratio with fit params divided out
     t_vals = np.arange(0, tmax)
     bsdata_dbl_fit = np.abs(
@@ -346,7 +351,8 @@ def main_meson4():
         plotdir,
         name="3pt_quad_kpi_fit",
         ylabel=r"$R_2(t)$",
-        ylim=(0.3, 0.35),
+        ylim=(0.315, 0.33),
+        # ylim=(0.3, 0.35),
     )
 
     return

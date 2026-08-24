@@ -9,6 +9,8 @@ from bootstrap import bootstrap
 import analysis.stats as stats
 from analysis.formatting import err_brackets
 from analysis import fitfunc as ff
+from gevpanalysis.common import read_pickle
+from gevpanalysis.common import normalize_matrices
 
 _metadata = {"Author": "Mischa Batelaan", "Creator": __file__}
 _colors = [
@@ -455,7 +457,7 @@ def main():
         color="r",
         alpha=0.6,
         linewidth=0,
-        label=rf"$|ME|={err_brackets(np.average(weighted_energy), np.std(weighted_energy))}$; $\chi^2_{{\textrm{{dof}}}} = {fit_redchisq:.2f}$",
+        label=rf"$|M|={err_brackets(np.average(weighted_energy), np.std(weighted_energy))}$; $\chi^2_{{\textrm{{dof}}}} = {fit_redchisq:.2f}$",
         zorder=3,
     )
     axs.axvline(10, color="k", linewidth=1, linestyle="--")
@@ -656,7 +658,7 @@ def main_meson2():
         color="r",
         alpha=0.6,
         linewidth=0,
-        label=rf"$|ME|={err_brackets(np.average(weighted_energy), np.std(weighted_energy))}$; $\chi^2_{{\textrm{{dof}}}} = {fit_redchisq:.2f}$",
+        label=rf"$|M|={err_brackets(np.average(weighted_energy), np.std(weighted_energy))}$; $\chi^2_{{\textrm{{dof}}}} = {fit_redchisq:.2f}$",
         zorder=3,
     )
     axs.axvline(10, color="k", linewidth=1, linestyle="--")
@@ -991,13 +993,1215 @@ def main_meson4():
     return
 
 
+def gevp_bootstrap_mesons(
+    corr_matrix, time_choice=10, delta_t=1, prev_evecs=None, name="", show=None
+):
+    """Solve the GEVP for a given correlation matrix
+
+    corr_matrix has the matrix indices as the first two, then the bootstrap index and then the time index
+    time_choice is the timeslice on which the GEVP will be set
+    delta_t is the size of the time evolution which will be used to solve the GEVP
+    """
+
+    # Apply the GEVP to the ensemble average to project the states we will use for extracting the energy shift.
+    mat_0_avg = np.average(corr_matrix[:, :, :, time_choice], axis=2)
+    mat_1_avg = np.average(corr_matrix[:, :, :, time_choice + delta_t], axis=2)
+    eval_left_avg, evec_left_avg = np.linalg.eig(
+        np.matmul(mat_1_avg, np.linalg.inv(mat_0_avg)).T
+    )
+    eval_right_avg, evec_right_avg = np.linalg.eig(
+        np.matmul(np.linalg.inv(mat_0_avg), mat_1_avg)
+    )
+
+    print("GEVP matrices: ")
+    print(mat_0_avg)
+    print("")
+    print(mat_1_avg)
+    print("")
+
+    # Ordering of the eigenvalues
+    if eval_left_avg[0] < eval_left_avg[1]:
+        eval_left_avg = eval_left_avg[::-1]
+        evec_left_avg = evec_left_avg[:, ::-1]
+    if eval_right_avg[0] < eval_right_avg[1]:
+        eval_right_avg = eval_right_avg[::-1]
+        evec_right_avg = evec_right_avg[:, ::-1]
+
+    # # Ordering of the eigenvalues
+    # if eval_left_avg[0] > eval_left_avg[1]:
+    #     eval_left_avg = eval_left_avg[::-1]
+    #     evec_left_avg = evec_left_avg[:, ::-1]
+    # if eval_right_avg[0] > eval_right_avg[1]:
+    #     eval_right_avg = eval_right_avg[::-1]
+    #     evec_right_avg = evec_right_avg[:, ::-1]
+
+    evec_left_list = []
+    evec_right_list = []
+    eval_left_list = []
+    eval_right_list = []
+    nboot = np.shape(corr_matrix)[2]
+
+    for boot in range(nboot):
+        mat_0 = corr_matrix[:, :, boot, time_choice]
+        mat_1 = corr_matrix[:, :, boot, time_choice + delta_t]
+
+        eval_left, evec_left = np.linalg.eig(np.matmul(mat_1, np.linalg.inv(mat_0)).T)
+        eval_right, evec_right = np.linalg.eig(np.matmul(np.linalg.inv(mat_0), mat_1))
+
+        # # Ordering of the eigenvalues
+        if eval_left[0] > eval_left[1]:
+            eval_left = eval_left[::-1]
+            evec_left = evec_left[:, ::-1]
+        if eval_right[0] > eval_right[1]:
+            eval_right = eval_right[::-1]
+            evec_right = evec_right[:, ::-1]
+
+        evec_left_list.append(evec_left)
+        evec_right_list.append(evec_right)
+        eval_left_list.append(eval_left)
+        eval_right_list.append(eval_right)
+
+    # Complex corelators
+    proj_corr = []
+    for i in range(len(eval_left_avg)):
+        Gti = np.einsum(
+            "i,ijkl,j->kl",
+            evec_left_avg[:, i],
+            corr_matrix,
+            evec_right_avg[:, i],
+        )
+        proj_corr.append(Gti)
+    # # Complex corelators
+    # Gt1 = np.einsum(
+    #     "i,ijkl,j->kl", evec_left_avg[:, 0], corr_matrix, evec_right_avg[:, 0]
+    # )
+    # Gt2 = np.einsum(
+    #     "i,ijkl,j->kl", evec_left_avg[:, 1], corr_matrix, evec_right_avg[:, 1]
+    # )
+    # if show:
+    #     stats.ploteffmass(Gt1, "eig_1" + name, plotdir, show=True)
+    #     stats.ploteffmass(Gt2, "eig_2" + name, plotdir, show=True)
+
+    gevp_data = [
+        np.array(eval_left_avg),
+        np.array(evec_left_avg),
+        np.array(eval_right_avg),
+        np.array(evec_right_avg),
+    ]
+    return proj_corr, gevp_data
+    # return Gt1, Gt2, gevp_data
+
+
+def plot_eff_proj_corrs(
+    corrs,
+    plotdir,
+    plot_name="",
+    labels=[r"$C_1$", r"$C_1$"],
+    ylim=None,
+    title="",
+    ylabel=r"$R(t)$",
+):
+
+    spacing = 1
+
+    corr_list = []
+    time_list = []
+    for corr in corrs:
+        real_1 = np.real(corr)
+        time = np.arange(0, np.shape(corr)[1])
+        effmass_1 = stats.bs_effmass(real_1, time_axis=1, spacing=spacing)
+        efftime = time[:-spacing] + 0.5
+        corr_list.append(effmass_1)
+        time_list.append(efftime)
+
+    # ======================================================================
+    # Plotting the principal correlators
+    f, axs = plt.subplots(1, 1, figsize=(7, 5), sharex=True, sharey=True)
+    for icorr, corr in enumerate(corr_list):
+        plt.errorbar(
+            time_list[icorr],
+            np.average(corr, axis=0),
+            np.std(corr, axis=0),
+            capsize=4,
+            elinewidth=1,
+            color=_colors[icorr],
+            fmt=_markers[icorr],
+            ms=4,
+            mfc="white",
+            label=labels[icorr],
+            zorder=1,
+        )
+
+    plt.grid(True, alpha=0.3)
+    plt.legend(fontsize="x-small")
+    plt.xlabel(r"$t/a$")
+    # plt.ylabel(r"$C_n(t)$")
+    # plt.ylabel(r"$R(t)$")
+    plt.ylabel(ylabel)
+    plt.title(title)
+    # plt.ylim(-0.36, 0.36)
+
+    if ylim is not None:
+        plt.ylim(ylim)
+
+    plt.tight_layout()
+    plt.savefig(
+        plotdir / (f"{plot_name}.pdf"),
+        metadata=_metadata,
+    )
+    # plt.yscale("log")
+    # plt.savefig(
+    #     plotdir / (f"GEVP_proj_corrs_{plot_name}_log.pdf"),
+    #     metadata=_metadata,
+    # )
+    plt.close()
+
+    return
+
+
+def meson_2pt_projections_big(
+    pickledir,
+    plotdir,
+    datadir,
+    pion_dir="meson_qcdsf",
+    kaon_dir="meson_qcdsf",
+    time_choice=29,
+    delta_t=6,
+    label="",
+    prev_evecs=None,
+    kappa_1="kp121040kp121040",
+    kappa_2="kp120620kp121040",
+):
+    """
+    Read in the two-point functions for the pion and kaon, construct the correlator matrices and do the GEVP to get the eigenvectors, eigenvalues and the projected correlators.
+    """
+
+    nboot = 500
+    nbin = 1
+
+    conf_num_u = "495"
+    dirpart_u = f"slrc/{kappa_1}/"
+    dirpart_s = f"slrc/{kappa_2}/"
+
+    # ------------------------------------------------------------
+    # Find conf number
+    test_file = (
+        pickledir
+        / Path(
+            f"{pion_dir}/messpec/32x64/{dirpart_u}sh_gij_p21_90-sh_gij_p21_90/p+0+0+0/"
+        )
+    ).glob("messpec_g5-g5_*cfgs.pickle")
+
+    conf_num_u = [
+        int("".join(filter(str.isdigit, l.name.split("_")[-1])))
+        for l in list(test_file)
+    ][0]
+    print(f"conf_num = {conf_num_u}")
+
+    ps = 5
+    a4 = 53
+    a2 = 51
+    opnames = [ps, a4, a2]
+
+    for iop, op1 in enumerate(opnames):
+        for jop, op2 in enumerate(opnames):
+            sign = 1.0
+            if iop == 1:
+                sign = sign * 1.0j
+            if jop == 1:
+                sign = sign * 1.0j
+
+            # pions
+            pion_file = pickledir / Path(
+                f"{pion_dir}/messpec/32x64/{dirpart_u}sh_gij_p21_90-sh_gij_p21_90/p+0+0+0/messpec_g{op1}-g{op2}_{conf_num_u}cfgs.pickle"
+            )
+            pion_data = read_pickle(pion_file, nboot=nboot, nbin=nbin)
+            pion_complex = pion_data[:, :, 0] + 1j * pion_data[:, :, 1]
+            if iop == 0 and jop == 0:
+                corr_matrix_pions = np.empty(
+                    (
+                        len(opnames),
+                        len(opnames),
+                        pion_complex.shape[0],
+                        pion_complex.shape[1],
+                    ),
+                    dtype=complex,
+                )
+            corr_matrix_pions[iop, jop] = sign * pion_complex
+
+            # kaons
+            kaon_file = pickledir / Path(
+                f"{kaon_dir}/messpec/32x64/{dirpart_s}sh_gij_p21_90-sh_gij_p21_90/p+0+0+0/messpec_g{op1}-g{op2}_{conf_num_u}cfgs.pickle"
+            )
+            kaon_data = read_pickle(kaon_file, nboot=nboot, nbin=nbin)
+            kaon_complex = kaon_data[:, :, 0] + 1j * kaon_data[:, :, 1]
+            if iop == 0 and jop == 0:
+                corr_matrix_kaons = np.empty(
+                    (
+                        len(opnames),
+                        len(opnames),
+                        kaon_complex.shape[0],
+                        kaon_complex.shape[1],
+                    ),
+                    dtype=complex,
+                )
+            corr_matrix_kaons[iop, jop] = sign * kaon_complex
+
+    # ------------------------------------------------------------
+    # Hermitianize
+    # pions_herm = np.swapaxes(
+    #     np.concatenate(
+    #         (corr_matrix_pions[:, :, :, :1], corr_matrix_pions[:, :, :, :0:-1]), axis=3
+    #     ),
+    #     0,
+    #     1,
+    # ).conj()
+    # np.swapaxes(
+    #     np.concatenate(
+    #         (corr_matrix_kaons[:, :, :, :1], corr_matrix_kaons[:, :, :, :0:-1]), axis=3
+    #     ),
+    #     0,
+    #     1,
+    # ).conj()
+
+    pions_herm = np.swapaxes(corr_matrix_pions, 0, 1).conj()
+    kaons_herm = np.swapaxes(corr_matrix_kaons, 0, 1).conj()
+    corr_matrix_pions = 0.5 * (corr_matrix_pions + pions_herm)
+    corr_matrix_kaons = 0.5 * (corr_matrix_kaons + kaons_herm)
+
+    # # ------------------------------------------------------------
+    # # Normalize the matrices
+    # corr_matrix_pions = normalize_matrices([corr_matrix_pions], time_choice=3)[0]
+    # corr_matrix_kaons = normalize_matrices([corr_matrix_kaons], time_choice=3)[0]
+
+    # ------------------------------------------------------------
+    # Pion GEVP
+    [
+        Gt1_pion,
+        Gt2_pion,
+        Gt3_pion,
+    ], [
+        eval_left_pion,
+        evec_left_pion,
+        eval_right_pion,
+        evec_right_pion,
+    ] = gevp_bootstrap_mesons(
+        corr_matrix_pions,
+        time_choice,
+        delta_t,
+        prev_evecs=prev_evecs,
+        name="_test",
+        # show=False,
+        show=True,
+    )
+
+    # ----------------------------------------------------------------------
+    pion_mat_avg = np.average(corr_matrix_pions[:, :, :, time_choice], axis=2)
+    corr_tZ = np.average(corr_matrix_pions[:, :, :, time_choice + 2], axis=2)
+    S = np.diag([1, -1, 1])
+    v0 = evec_right_pion[:, 0]
+    v0_renorm = v0 / np.sqrt(np.einsum("i,ij,j->", v0.conj(), corr_tZ, v0))
+
+    zF = corr_tZ @ v0_renorm
+    b0 = S @ zF
+    PB_perp = np.eye(3, dtype=complex) - np.outer(b0, b0.conj()) / np.vdot(b0, b0)
+    v_simple = PB_perp @ zF
+    norm2 = np.real(np.vdot(v_simple, pion_mat_avg @ v_simple))
+    v_simple /= np.sqrt(norm2)
+
+    evec_right_pion[:, 0] = v_simple
+    evec_left_pion[:, 0] = v_simple.conj()
+    Gt1_pion = np.einsum(
+        "i,ijkl,j->kl",
+        v_simple.conj(),
+        corr_matrix_pions,
+        v_simple,
+    )
+
+    # Plotting
+    plot_eff_proj_corrs(
+        [Gt1_pion, Gt2_pion, Gt3_pion],
+        plotdir,
+        plot_name=f"pion_GEVP_proj_{label}",
+        labels=[
+            r"corr 1",
+            r"corr 2",
+            r"corr 3",
+        ],
+        ylim=(-0.8, 0.8),
+    )
+
+    # ======================================================================
+    # Kaon GEVP
+
+    [
+        Gt1_kaon,
+        Gt2_kaon,
+        Gt3_kaon,
+    ], [
+        eval_left_kaon,
+        evec_left_kaon,
+        eval_right_kaon,
+        evec_right_kaon,
+    ] = gevp_bootstrap_mesons(
+        corr_matrix_kaons,
+        time_choice,
+        delta_t,
+        prev_evecs=prev_evecs,
+        name="_test",
+        show=False,
+    )
+
+    # ------------------------------------------------------------
+    # Testing
+    kaon_mat_avg = np.average(corr_matrix_kaons[:, :, :, time_choice], axis=2)
+    corr_tZ = np.average(corr_matrix_kaons[:, :, :, time_choice + 2], axis=2)
+    S = np.diag([1, -1, 1])
+    v0 = evec_right_kaon[:, 0]
+    v0_renorm = v0 / np.sqrt(np.einsum("i,ij,j->", v0.conj(), corr_tZ, v0))
+
+    zF = corr_tZ @ v0_renorm
+    b0 = S @ zF
+    PB_perp = np.eye(3, dtype=complex) - np.outer(b0, b0.conj()) / np.vdot(b0, b0)
+    v_simple = PB_perp @ zF
+    norm2 = np.real(np.vdot(v_simple, kaon_mat_avg @ v_simple))
+    v_simple /= np.sqrt(norm2)
+
+    evec_right_kaon[:, 0] = v_simple
+    evec_left_kaon[:, 0] = v_simple.conj()
+    Gt1_kaon = np.einsum(
+        "i,ijkl,j->kl",
+        v_simple.conj(),
+        corr_matrix_kaons,
+        v_simple,
+    )
+
+    # # ======================================================================
+    # # FIRST TEST
+    # kaon_mat_avg = np.average(corr_matrix_kaons[:, :, :, time_choice], axis=2)
+    # # z_0_F = np.einsum(
+    # #     "ij,j->i",
+    # #     kaon_mat_avg,
+    # #     evec_right_kaon[:, 0],
+    # # )
+    # S_mat = np.diag([1, -1, 1])
+    # # z0F_norm = z_0_F / np.linalg.norm(z_0_F)
+    # # z0B = S_mat @ z_0_F
+
+    # # print(evec_right_kaon[:, 0])
+    # # print(z_0_F)
+    # # print(z0F_norm)
+    # # print(z0B)
+
+    # v0 = evec_right_kaon[:, 0]
+    # v0_renorm = v0 / np.sqrt(np.einsum("i,ij,j->", v0.conj(), kaon_mat_avg, v0))
+    # # v0_renorm = np.asarray(v0_renorm).reshape(-1)
+    # b0 = np.einsum(
+    #     "ki,ij,j->i",
+    #     S_mat,
+    #     kaon_mat_avg,
+    #     v0_renorm,
+    #     # v0,
+    # )
+
+    # # chat
+    # b0 = np.asarray(b0).reshape(-1)
+    # # v0 = np.asarray(v0_renorm).reshape(-1)
+    # v0 = np.asarray(v0).reshape(-1)
+
+    # denom = np.vdot(b0, b0)
+    # PB_perp = np.eye(b0.size, dtype=complex) - np.outer(b0, b0.conj()) / denom
+
+    # vnull = PB_perp @ v0
+
+    # norm2 = np.abs(np.vdot(vnull, kaon_mat_avg @ vnull))
+    # vnull_renorm = vnull / np.sqrt(norm2)
+    # # vnull_renorm = vnull
+
+    # test = np.vdot(b0, vnull_renorm)
+
+    # print("vnull:")
+    # print(vnull)
+    # print(vnull_renorm)
+    # print("b0† vnull:", test)
+    # print(
+    #     "relative residual:",
+    #     abs(test) / (np.linalg.norm(b0) * np.linalg.norm(vnull_renorm)),
+    # )
+    # print("v0:")
+    # print(evec_right_kaon[:, 0])
+
+    # evec_right_kaon[:, 0] = vnull_renorm
+    # evec_left_kaon[:, 0] = vnull_renorm.conj()
+
+    # Gt1_kaon = np.einsum(
+    #     "i,ijkl,j->kl",
+    #     vnull_renorm.conj(),
+    #     corr_matrix_kaons,
+    #     vnull_renorm,
+    # )
+
+    # # Me
+    # # PB_perp = np.diag([1, 1, 1]) - (z0B @ z0B.conj().T) / (z0B.conj().T @ z0B)
+    # PB_perp = np.diag([1, 1, 1]) - np.outer(b0, b0.conj()) / np.vdot(b0, b0)
+    # vnull = PB_perp @ v0_renorm
+    # # norm2 = np.real(np.vdot(vnull, kaon_mat_avg @ vnull))
+    # # vnull_renorm = vnull / np.sqrt(norm2)
+    # vnull_renorm = vnull / np.sqrt(
+    #     np.einsum("i,ij,j->", vnull.conj().T, kaon_mat_avg, vnull)
+    # )
+
+    # print("vnull")
+    # print(vnull_renorm)
+    # # test = b0.conj().T @ vnull
+    # test = np.vdot(b0, vnull_renorm)
+    # print(test)
+    # print(np.abs(test))
+
+    # exit()
+    # ------------------------------------------------------------
+
+    # Plotting
+    plot_eff_proj_corrs(
+        [Gt1_kaon, Gt2_kaon, Gt3_kaon],
+        plotdir,
+        plot_name=f"kaon_GEVP_proj_{label}",
+        labels=[
+            r"corr 1",
+            r"corr 2",
+            r"corr 3",
+        ],
+        ylim=(-0.8, 0.8),
+    )
+
+    pion_ps_ps = corr_matrix_pions[0, 0]
+    pion_a_a = corr_matrix_pions[1, 1]
+    pion_a2_a2 = corr_matrix_pions[2, 2]
+    kaon_ps_ps = corr_matrix_kaons[0, 0]
+    kaon_a_a = corr_matrix_kaons[1, 1]
+    kaon_a2_a2 = corr_matrix_kaons[2, 2]
+
+    # Plotting
+    if label == "0twist":
+        title1 = r"$\mathbf{p}^{\pi} = \mathbf{0}$"
+        title2 = r"$\mathbf{p}^{K} = \mathbf{0}$"
+    else:
+        title1 = r"$\mathbf{p}^{\pi}_2 = \mathbf{\theta}_2$"
+        title2 = r"$\mathbf{p}^{K}_2 = \mathbf{\theta}_2$"
+    plot_eff_proj_corrs(
+        [pion_ps_ps, pion_a_a, pion_a2_a2],
+        plotdir,
+        plot_name=f"pion_GEVP_ops_{label}",
+        labels=[
+            r"$\pi_{\gamma_5,\gamma_5}$",
+            r"$\pi_{\gamma_4\gamma_5,\gamma_4\gamma_5}$",
+            r"$\pi_{\gamma_2\gamma_5,\gamma_2\gamma_5}$",
+        ],
+        title=title1,
+        ylim=(-0.8, 0.8),
+    )
+    # Plotting
+    plot_eff_proj_corrs(
+        [kaon_ps_ps, kaon_a_a, kaon_a2_a2],
+        plotdir,
+        plot_name=f"kaon_GEVP_ops_{label}",
+        labels=[
+            r"$K_{\gamma_5,\gamma_5}$",
+            r"$K_{\gamma_4\gamma_5,\gamma_4\gamma_5}$",
+            r"$K_{\gamma_2\gamma_5,\gamma_2\gamma_5}$",
+        ],
+        title=title2,
+        ylim=(-0.8, 0.8),
+    )
+
+    # print("evals = ")
+    # print(np.real(eval_left_pion))
+    # print(np.real(eval_left_kaon))
+
+    return (
+        [eval_left_pion, eval_right_pion, eval_left_kaon, eval_right_kaon],
+        [evec_left_pion, evec_right_pion, evec_left_kaon, evec_right_kaon],
+        [
+            Gt1_pion,
+            Gt1_kaon,
+            Gt2_pion,
+            Gt2_kaon,
+            Gt3_pion,
+            Gt3_kaon,
+        ],
+        [
+            pion_ps_ps,
+            kaon_ps_ps,
+            pion_a_a,
+            kaon_a_a,
+            pion_a2_a2,
+            kaon_a2_a2,
+        ],
+    )
+
+
+def meson_2pt_projections(
+    pickledir,
+    plotdir,
+    datadir,
+    pion_dir="meson_qcdsf",
+    kaon_dir="meson_qcdsf",
+    time_choice=29,
+    delta_t=6,
+    label="",
+    prev_evecs=None,
+    kappa_1="kp121040kp121040",
+    kappa_2="kp120620kp121040",
+):
+    """
+    Read in the two-point functions for the pion and kaon, construct the correlator matrices and do the GEVP to get the eigenvectors, eigenvalues and the projected correlators.
+    """
+
+    nboot = 500
+    nbin = 1
+
+    conf_num_u = "495"
+    dirpart_u = f"slrc/{kappa_1}/"
+    dirpart_s = f"slrc/{kappa_2}/"
+
+    # ------------------------------------------------------------
+    # Find conf number
+    test_file = (
+        pickledir
+        / Path(
+            f"{pion_dir}/messpec/32x64/{dirpart_u}sh_gij_p21_90-sh_gij_p21_90/p+0+0+0/"
+        )
+    ).glob("messpec_g5-g5_*cfgs.pickle")
+
+    conf_num_u = [
+        int("".join(filter(str.isdigit, l.name.split("_")[-1])))
+        for l in list(test_file)
+    ][0]
+    print(f"conf_num = {conf_num_u}")
+
+    ps = 5
+    a4 = 53
+    # a2 = 51
+    opnames = [ps, a4]
+
+    for iop, op1 in enumerate(opnames):
+        for jop, op2 in enumerate(opnames):
+            # pions
+            sign = 1.0
+            if iop == 1:
+                sign = sign * 1.0j
+            if jop == 1:
+                sign = sign * 1.0j
+
+            pion_file = pickledir / Path(
+                f"{pion_dir}/messpec/32x64/{dirpart_u}sh_gij_p21_90-sh_gij_p21_90/p+0+0+0/messpec_g{op1}-g{op2}_{conf_num_u}cfgs.pickle"
+            )
+            pion_data = read_pickle(pion_file, nboot=nboot, nbin=nbin)
+            pion_complex = pion_data[:, :, 0] + 1j * pion_data[:, :, 1]
+            if iop == 0 and jop == 0:
+                corr_matrix_pions = np.empty(
+                    (
+                        len(opnames),
+                        len(opnames),
+                        pion_complex.shape[0],
+                        pion_complex.shape[1],
+                    ),
+                    dtype=complex,
+                )
+            corr_matrix_pions[iop, jop] = sign * pion_complex
+
+            # kaons
+            kaon_file = pickledir / Path(
+                f"{kaon_dir}/messpec/32x64/{dirpart_s}sh_gij_p21_90-sh_gij_p21_90/p+0+0+0/messpec_g{op1}-g{op2}_{conf_num_u}cfgs.pickle"
+            )
+            kaon_data = read_pickle(kaon_file, nboot=nboot, nbin=nbin)
+            kaon_complex = kaon_data[:, :, 0] + 1j * kaon_data[:, :, 1]
+            if iop == 0 and jop == 0:
+                corr_matrix_kaons = np.empty(
+                    (
+                        len(opnames),
+                        len(opnames),
+                        kaon_complex.shape[0],
+                        kaon_complex.shape[1],
+                    ),
+                    dtype=complex,
+                )
+            corr_matrix_kaons[iop, jop] = sign * kaon_complex
+
+    # # ------------------------------------------------------------
+    # Pion GEVP
+
+    [
+        Gt1_pion,
+        Gt2_pion,
+    ], [
+        eval_left_pion,
+        evec_left_pion,
+        eval_right_pion,
+        evec_right_pion,
+    ] = gevp_bootstrap_mesons(
+        corr_matrix_pions,
+        time_choice,
+        delta_t,
+        prev_evecs=prev_evecs,
+        name="_test",
+        # show=False,
+        show=True,
+    )
+
+    # Plotting
+    plot_eff_proj_corrs(
+        [Gt1_pion, Gt2_pion],
+        plotdir,
+        plot_name=f"pion_GEVP_proj_{label}",
+        labels=[
+            r"corr 1",
+            r"corr 2",
+            r"corr 3",
+        ],
+        ylim=(-0.8, 0.8),
+    )
+
+    # ======================================================================
+    # Kaon GEVP
+
+    [
+        Gt1_kaon,
+        Gt2_kaon,
+    ], [
+        eval_left_kaon,
+        evec_left_kaon,
+        eval_right_kaon,
+        evec_right_kaon,
+    ] = gevp_bootstrap_mesons(
+        corr_matrix_kaons,
+        time_choice,
+        delta_t,
+        prev_evecs=prev_evecs,
+        name="_test",
+        show=False,
+    )
+
+    # Plotting
+    plot_eff_proj_corrs(
+        [Gt1_kaon, Gt2_kaon],
+        plotdir,
+        plot_name=f"kaon_GEVP_proj_{label}",
+        labels=[
+            r"corr 1",
+            r"corr 2",
+            r"corr 3",
+        ],
+        ylim=(-0.8, 0.8),
+    )
+
+    pion_ps_ps = corr_matrix_pions[0, 0]
+    pion_a_a = corr_matrix_pions[1, 1]
+    kaon_ps_ps = corr_matrix_kaons[0, 0]
+    kaon_a_a = corr_matrix_kaons[1, 1]
+
+    print("evals = ")
+    # print(np.real(eval_left_pion))
+    # print(np.real(eval_left_kaon))
+
+    return (
+        [eval_left_pion, eval_right_pion, eval_left_kaon, eval_right_kaon],
+        [evec_left_pion, evec_right_pion, evec_left_kaon, evec_right_kaon],
+        [
+            Gt1_pion,
+            Gt1_kaon,
+            Gt2_pion,
+            Gt2_kaon,
+        ],
+        [
+            pion_ps_ps,
+            kaon_ps_ps,
+            pion_a_a,
+            kaon_a_a,
+        ],
+    )
+
+
+def meson_3pt_projections(
+    pickledir,
+    plotdir,
+    datadir,
+    evecs_pion,
+    evecs_kaon,
+    p_k_dir="meson_qcdsf",
+    k_p_dir="meson_qcdsf",
+    p_p_dir="meson_qcdsf",
+    k_k_dir="meson_qcdsf",
+    time_choice=29,
+    delta_t=6,
+    label="",
+    # switch_kappa=False,
+    kappa_1="kp121040kp121040",
+    kappa_2="kp120620kp121040",
+    # kappa_2="kp121040kp120620",
+):
+    print(np.shape(evecs_pion))
+    print(np.shape(evecs_kaon))
+    # GEVP
+    # time_choice = 25
+    # delta_t = 4
+    nboot = 500
+    nbin = 1
+    prev_evecs = None
+
+    conf_num_u = "495"
+    dirpart_u = f"slrc/{kappa_1}/"
+    dirpart_s = f"slrc/{kappa_2}/"
+    # if switch_kappa:
+    #     dirpart_s = "slrc/kp121040kp120620/"
+    # else:
+    #     dirpart_s = "slrc/kp120620kp121040/"
+
+    # ------------------------------------------------------------
+    # Find conf number
+    test_file = (
+        pickledir
+        / Path(
+            f"{p_k_dir}/messpec/32x64/{dirpart_u}sh_gij_p21_90-sh_gij_p21_90/p+0+0+0/"
+        )
+    ).glob("messpec_g5-g5_*cfgs.pickle")
+    conf_num_u = [
+        int("".join(filter(str.isdigit, l.name.split("_")[-1])))
+        for l in list(test_file)
+    ][0]
+    print(f"conf_num = {conf_num_u}")
+
+    pvec_pvec_name = f"/messpec_g5-g5_{conf_num_u}cfgs.pickle"
+    pvec_axial_name = f"/messpec_g5-g53_{conf_num_u}cfgs.pickle"
+    axial_pvec_name = f"/messpec_g53-g5_{conf_num_u}cfgs.pickle"
+    axial_axial_name = f"/messpec_g53-g53_{conf_num_u}cfgs.pickle"
+
+    # ------------------------------------------------------------
+    # pion to kaon
+    filename_p_k_PS_PS = pickledir / Path(
+        f"{p_k_dir}/messpec/32x64/{dirpart_s}/sh_gij_p21_90-sh_gij_p21_90/p+0+0+0/{pvec_pvec_name}"
+    )
+    filename_p_k_A_PS = pickledir / Path(
+        f"{p_k_dir}/messpec/32x64/{dirpart_s}/sh_gij_p21_90-sh_gij_p21_90/p+0+0+0/{axial_pvec_name}"
+    )
+    filename_p_k_PS_A = pickledir / Path(
+        f"{p_k_dir}/messpec/32x64/{dirpart_s}/sh_gij_p21_90-sh_gij_p21_90/p+0+0+0/{pvec_axial_name}"
+    )
+    filename_p_k_A_A = pickledir / Path(
+        f"{p_k_dir}/messpec/32x64/{dirpart_s}/sh_gij_p21_90-sh_gij_p21_90/p+0+0+0/{axial_axial_name}"
+    )
+
+    p_k_pvec_pvec = read_pickle(filename_p_k_PS_PS, nboot=nboot, nbin=nbin)
+    p_k_pvec_axial = read_pickle(filename_p_k_PS_A, nboot=nboot, nbin=nbin)
+    p_k_axial_pvec = read_pickle(filename_p_k_A_PS, nboot=nboot, nbin=nbin)
+    p_k_axial_axial = read_pickle(filename_p_k_A_A, nboot=nboot, nbin=nbin)
+
+    p_k_ps_ps = p_k_pvec_pvec[:, :, 0] + 1j * p_k_pvec_pvec[:, :, 1]
+    p_k_a_a = p_k_axial_axial[:, :, 0] + 1j * p_k_axial_axial[:, :, 1]
+    p_k_ps_a = p_k_pvec_axial[:, :, 0] + 1j * p_k_pvec_axial[:, :, 1]
+    p_k_a_ps = p_k_axial_pvec[:, :, 0] + 1j * p_k_axial_pvec[:, :, 1]
+
+    # ------------------------------------------------------------
+    # kaon to pion
+    filename_k_p_PS_PS = pickledir / Path(
+        f"{k_p_dir}/messpec/32x64/{dirpart_u}/sh_gij_p21_90-sh_gij_p21_90/p+0+0+0/{pvec_pvec_name}"
+    )
+    filename_k_p_A_PS = pickledir / Path(
+        f"{k_p_dir}/messpec/32x64/{dirpart_u}/sh_gij_p21_90-sh_gij_p21_90/p+0+0+0/{axial_pvec_name}"
+    )
+    filename_k_p_PS_A = pickledir / Path(
+        f"{k_p_dir}/messpec/32x64/{dirpart_u}/sh_gij_p21_90-sh_gij_p21_90/p+0+0+0/{pvec_axial_name}"
+    )
+    filename_k_p_A_A = pickledir / Path(
+        f"{k_p_dir}/messpec/32x64/{dirpart_u}/sh_gij_p21_90-sh_gij_p21_90/p+0+0+0/{axial_axial_name}"
+    )
+
+    k_p_pvec_pvec = read_pickle(filename_k_p_PS_PS, nboot=nboot, nbin=nbin)
+    k_p_pvec_axial = read_pickle(filename_k_p_PS_A, nboot=nboot, nbin=nbin)
+    k_p_axial_pvec = read_pickle(filename_k_p_A_PS, nboot=nboot, nbin=nbin)
+    k_p_axial_axial = read_pickle(filename_k_p_A_A, nboot=nboot, nbin=nbin)
+
+    k_p_ps_ps = k_p_pvec_pvec[:, :, 0] + 1j * k_p_pvec_pvec[:, :, 1]
+    k_p_a_a = k_p_axial_axial[:, :, 0] + 1j * k_p_axial_axial[:, :, 1]
+    k_p_ps_a = k_p_pvec_axial[:, :, 0] + 1j * k_p_pvec_axial[:, :, 1]
+    k_p_a_ps = k_p_axial_pvec[:, :, 0] + 1j * k_p_axial_pvec[:, :, 1]
+
+    # ------------------------------------------------------------
+    # pion to pion
+    filename_p_p_PS_PS = pickledir / Path(
+        f"{p_p_dir}/messpec/32x64/{dirpart_u}/sh_gij_p21_90-sh_gij_p21_90/p+0+0+0/{pvec_pvec_name}"
+    )
+    filename_p_p_A_PS = pickledir / Path(
+        f"{p_p_dir}/messpec/32x64/{dirpart_u}/sh_gij_p21_90-sh_gij_p21_90/p+0+0+0/{axial_pvec_name}"
+    )
+    filename_p_p_PS_A = pickledir / Path(
+        f"{p_p_dir}/messpec/32x64/{dirpart_u}/sh_gij_p21_90-sh_gij_p21_90/p+0+0+0/{pvec_axial_name}"
+    )
+    filename_p_p_A_A = pickledir / Path(
+        f"{p_p_dir}/messpec/32x64/{dirpart_u}/sh_gij_p21_90-sh_gij_p21_90/p+0+0+0/{axial_axial_name}"
+    )
+
+    p_p_pvec_pvec = read_pickle(filename_p_p_PS_PS, nboot=nboot, nbin=nbin)
+    p_p_pvec_axial = read_pickle(filename_p_p_PS_A, nboot=nboot, nbin=nbin)
+    p_p_axial_pvec = read_pickle(filename_p_p_A_PS, nboot=nboot, nbin=nbin)
+    p_p_axial_axial = read_pickle(filename_p_p_A_A, nboot=nboot, nbin=nbin)
+
+    p_p_ps_ps = p_p_pvec_pvec[:, :, 0] + 1j * p_p_pvec_pvec[:, :, 1]
+    p_p_a_a = p_p_axial_axial[:, :, 0] + 1j * p_p_axial_axial[:, :, 1]
+    p_p_ps_a = p_p_pvec_axial[:, :, 0] + 1j * p_p_pvec_axial[:, :, 1]
+    p_p_a_ps = p_p_axial_pvec[:, :, 0] + 1j * p_p_axial_pvec[:, :, 1]
+
+    # ------------------------------------------------------------
+    # kaon to kaon
+    filename_k_k_PS_PS = pickledir / Path(
+        f"{k_k_dir}/messpec/32x64/{dirpart_s}/sh_gij_p21_90-sh_gij_p21_90/p+0+0+0/{pvec_pvec_name}"
+    )
+    filename_k_k_A_PS = pickledir / Path(
+        f"{k_k_dir}/messpec/32x64/{dirpart_s}/sh_gij_p21_90-sh_gij_p21_90/p+0+0+0/{axial_pvec_name}"
+    )
+    filename_k_k_PS_A = pickledir / Path(
+        f"{k_k_dir}/messpec/32x64/{dirpart_s}/sh_gij_p21_90-sh_gij_p21_90/p+0+0+0/{pvec_axial_name}"
+    )
+    filename_k_k_A_A = pickledir / Path(
+        f"{k_k_dir}/messpec/32x64/{dirpart_s}/sh_gij_p21_90-sh_gij_p21_90/p+0+0+0/{axial_axial_name}"
+    )
+
+    k_k_pvec_pvec = read_pickle(filename_k_k_PS_PS, nboot=nboot, nbin=nbin)
+    k_k_pvec_axial = read_pickle(filename_k_k_PS_A, nboot=nboot, nbin=nbin)
+    k_k_axial_pvec = read_pickle(filename_k_k_A_PS, nboot=nboot, nbin=nbin)
+    k_k_axial_axial = read_pickle(filename_k_k_A_A, nboot=nboot, nbin=nbin)
+
+    k_k_ps_ps = k_k_pvec_pvec[:, :, 0] + 1j * k_k_pvec_pvec[:, :, 1]
+    k_k_a_a = k_k_axial_axial[:, :, 0] + 1j * k_k_axial_axial[:, :, 1]
+    k_k_ps_a = k_k_pvec_axial[:, :, 0] + 1j * k_k_pvec_axial[:, :, 1]
+    k_k_a_ps = k_k_axial_pvec[:, :, 0] + 1j * k_k_axial_pvec[:, :, 1]
+
+    # ======================================================================
+    # Make projected operator threept functions
+    # pion to kaon
+    corr_matrix_p_k = np.array(
+        [
+            [p_k_ps_ps, p_k_ps_a],
+            [p_k_a_ps, p_k_a_a],
+        ]
+    )
+    p_k_fwd = np.einsum(
+        # "i,ijkl,j->kl",
+        # evecs_pion[0][:, 0],
+        # corr_matrix_p_k,
+        # evecs_kaon[1][:, 0],
+        "i,ijkl,j->kl",
+        evecs_kaon[0][:, 0].conj(),
+        corr_matrix_p_k,
+        evecs_pion[1][:, 0],
+    )
+
+    # ------------------------------------------------------------
+    # kaon to pion
+    corr_matrix_k_p = np.array(
+        [
+            [k_p_ps_ps, k_p_ps_a],
+            [k_p_a_ps, k_p_a_a],
+        ]
+    )
+    k_p_fwd = np.einsum(
+        # "i,ijkl,j->kl",
+        # evecs_kaon[0][:, 0],
+        # corr_matrix_k_p,
+        # evecs_pion[1][:, 0],
+        "i,ijkl,j->kl",
+        evecs_pion[0][:, 0].conj(),
+        corr_matrix_k_p,
+        evecs_kaon[1][:, 0],
+    )
+    # ------------------------------------------------------------
+    # pion to pion
+    corr_matrix_p_p = np.array(
+        [
+            [p_p_ps_ps, p_p_ps_a],
+            [p_p_a_ps, p_p_a_a],
+        ]
+    )
+    p_p_fwd = np.einsum(
+        "i,ijkl,j->kl",
+        evecs_pion[0][:, 0].conj(),
+        corr_matrix_p_p,
+        evecs_pion[1][:, 0],
+    )
+
+    # ------------------------------------------------------------
+    corr_matrix_k_k = np.array(
+        [
+            [k_k_ps_ps, k_k_ps_a],
+            [k_k_a_ps, k_k_a_a],
+        ]
+    )
+    k_k_fwd = np.einsum(
+        "i,ijkl,j->kl",
+        evecs_kaon[0][:, 0].conj(),
+        corr_matrix_k_k,
+        evecs_kaon[1][:, 0],
+    )
+
+    # # ------------------------------------------------------------
+    # # Plotting tests
+    # k_k_fwd_2 = np.einsum(
+    #     "i,ijkl,j->kl", evecs_kaon[0][:, 0], corr_matrix_k_k, evecs_kaon[1][:, 0].T
+    # )
+    # plot_2corr_log(
+    #     # -k_k_fwd_2,
+    #     # -k_p_a_a.real,
+    #     k_p_a_ps.real,
+    #     # -k_k_a_a.imag,
+    #     k_p_ps_ps.real,
+    #     # k_k_ps_ps.imag,
+    #     plotname="k_p_ps-ps_a-ps",
+    #     # plotname="k_p_ps-ps_a-a",
+    #     plotdir=plotdir,
+    #     # v_line=10,
+    # )
+    # exit()
+    # # # ------------------------------------------------------------
+
+    return (
+        [p_k_fwd, k_p_fwd, p_p_fwd, k_k_fwd],
+        [
+            p_k_ps_ps,
+            k_p_ps_ps,
+            p_p_ps_ps,
+            k_k_ps_ps,
+        ],
+        [
+            p_k_a_a,
+            k_p_a_a,
+            p_p_a_a,
+            k_k_a_a,
+        ],
+    )
+
+
+def meson_3pt_projections_big(
+    pickledir,
+    plotdir,
+    datadir,
+    evecs_pion,
+    evecs_kaon,
+    fwd_index=0,
+    p_k_dir="meson_qcdsf",
+    k_p_dir="meson_qcdsf",
+    p_p_dir="meson_qcdsf",
+    k_k_dir="meson_qcdsf",
+    time_choice=29,
+    delta_t=6,
+    label="",
+    kappa_1="kp121040kp121040",
+    kappa_2="kp120620kp121040",
+):
+    print(np.shape(evecs_pion))
+    print(np.shape(evecs_kaon))
+    # GEVP
+    # time_choice = 25
+    # delta_t = 4
+    nboot = 500
+    nbin = 1
+    prev_evecs = None
+
+    conf_num_u = "495"
+    dirpart_u = f"slrc/{kappa_1}/"
+    dirpart_s = f"slrc/{kappa_2}/"
+
+    # ------------------------------------------------------------
+    # Find conf number
+    test_file = (
+        pickledir
+        / Path(
+            f"{p_k_dir}/messpec/32x64/{dirpart_u}sh_gij_p21_90-sh_gij_p21_90/p+0+0+0/"
+        )
+    ).glob("messpec_g5-g5_*cfgs.pickle")
+    conf_num_u = [
+        int("".join(filter(str.isdigit, l.name.split("_")[-1])))
+        for l in list(test_file)
+    ][0]
+    print(f"conf_num = {conf_num_u}")
+
+    # ------------------------------------------------------------
+    ps = 5
+    a4 = 53
+    a2 = 51
+    opnames = [ps, a4, a2]
+    if label == "utwist":
+        opnames_p = [ps, a4, a2]
+        opnames_k = [ps, a4]
+    elif label == "stwist":
+        opnames_k = [ps, a4, a2]
+        opnames_p = [ps, a4]
+    # opnames_k = opnames
+    for iop, op1 in enumerate(opnames_p):
+        for jop, op2 in enumerate(opnames_k):
+            sign = 1.0
+            if iop == 1:
+                sign = sign * 1.0j
+            if jop == 1:
+                sign = sign * 1.0j
+            # ------------------------------------------------------------
+            # pion to kaon
+            filename_p_k = pickledir / Path(
+                f"{k_p_dir}/messpec/32x64/{dirpart_u}/sh_gij_p21_90-sh_gij_p21_90/p+0+0+0/messpec_g{op1}-g{op2}_{conf_num_u}cfgs.pickle"
+            )
+            p_k_data = read_pickle(filename_p_k, nboot=nboot, nbin=nbin)
+            p_k_complex = p_k_data[:, :, 0] + 1j * p_k_data[:, :, 1]
+            if iop == 0 and jop == 0:
+                corr_matrix_p_k = np.empty(
+                    (
+                        len(opnames_p),
+                        len(opnames_k),
+                        p_k_complex.shape[0],
+                        p_k_complex.shape[1],
+                    ),
+                    dtype=complex,
+                )
+            corr_matrix_p_k[iop, jop] = sign * p_k_complex
+
+    for iop, op1 in enumerate(opnames_k):
+        for jop, op2 in enumerate(opnames_p):
+            sign = 1.0
+            if iop == 1:
+                sign = sign * 1.0j
+            if jop == 1:
+                sign = sign * 1.0j
+            # ------------------------------------------------------------
+            # kaon to pion
+            filename_k_p = pickledir / Path(
+                f"{p_k_dir}/messpec/32x64/{dirpart_s}/sh_gij_p21_90-sh_gij_p21_90/p+0+0+0/messpec_g{op1}-g{op2}_{conf_num_u}cfgs.pickle"
+            )
+            k_p_data = read_pickle(filename_k_p, nboot=nboot, nbin=nbin)
+            k_p_complex = k_p_data[:, :, 0] + 1j * k_p_data[:, :, 1]
+            if iop == 0 and jop == 0:
+                corr_matrix_k_p = np.empty(
+                    (
+                        len(opnames_k),
+                        len(opnames_p),
+                        k_p_complex.shape[0],
+                        k_p_complex.shape[1],
+                    ),
+                    dtype=complex,
+                )
+            corr_matrix_k_p[iop, jop] = sign * k_p_complex
+
+    for iop, op1 in enumerate(opnames_p):
+        for jop, op2 in enumerate(opnames_p):
+            # ------------------------------------------------------------
+            # pion to pion
+            filename_p_p = pickledir / Path(
+                f"{p_p_dir}/messpec/32x64/{dirpart_u}/sh_gij_p21_90-sh_gij_p21_90/p+0+0+0/messpec_g{op1}-g{op2}_{conf_num_u}cfgs.pickle"
+            )
+            p_p_data = read_pickle(filename_p_p, nboot=nboot, nbin=nbin)
+            p_p_complex = p_p_data[:, :, 0] + 1j * p_p_data[:, :, 1]
+            if iop == 0 and jop == 0:
+                corr_matrix_p_p = np.empty(
+                    (
+                        len(opnames_p),
+                        len(opnames_p),
+                        p_p_complex.shape[0],
+                        p_p_complex.shape[1],
+                    ),
+                    dtype=complex,
+                )
+            corr_matrix_p_p[iop, jop] = p_p_complex
+
+    for iop, op1 in enumerate(opnames_k):
+        for jop, op2 in enumerate(opnames_k):
+            # ------------------------------------------------------------
+            # kaon to kaon
+            filename_k_k = pickledir / Path(
+                f"{k_k_dir}/messpec/32x64/{dirpart_s}/sh_gij_p21_90-sh_gij_p21_90/p+0+0+0/messpec_g{op1}-g{op2}_{conf_num_u}cfgs.pickle"
+            )
+            k_k_data = read_pickle(filename_k_k, nboot=nboot, nbin=nbin)
+            k_k_complex = k_k_data[:, :, 0] + 1j * k_k_data[:, :, 1]
+            if iop == 0 and jop == 0:
+                corr_matrix_k_k = np.empty(
+                    (
+                        len(opnames_k),
+                        len(opnames_k),
+                        k_k_complex.shape[0],
+                        k_k_complex.shape[1],
+                    ),
+                    dtype=complex,
+                )
+            corr_matrix_k_k[iop, jop] = k_k_complex
+
+    # ------------------------------------------------------------
+    # pion to kaon
+    p_k_fwd = np.einsum(
+        "i,ijkl,j->kl",
+        evecs_kaon[0][:, fwd_index],
+        corr_matrix_k_p,
+        # corr_matrix_p_k,
+        evecs_pion[1][:, fwd_index],
+    )
+
+    # ------------------------------------------------------------
+    # kaon to pion
+    k_p_fwd = np.einsum(
+        "i,ijkl,j->kl",
+        evecs_pion[0][:, fwd_index],
+        corr_matrix_p_k,
+        # corr_matrix_k_p,
+        evecs_kaon[1][:, fwd_index],
+    )
+    # ------------------------------------------------------------
+    # pion to pion
+    p_p_fwd = np.einsum(
+        "i,ijkl,j->kl",
+        evecs_pion[0][:, fwd_index],
+        corr_matrix_p_p,
+        evecs_pion[1][:, fwd_index],
+    )
+
+    # ------------------------------------------------------------
+    k_k_fwd = np.einsum(
+        "i,ijkl,j->kl",
+        evecs_kaon[0][:, fwd_index],
+        corr_matrix_k_k,
+        evecs_kaon[1][:, fwd_index],
+    )
+
+    p_k_ps_ps = corr_matrix_p_k[0, 0]
+    k_p_ps_ps = corr_matrix_k_p[0, 0]
+    p_p_ps_ps = corr_matrix_p_p[0, 0]
+    k_k_ps_ps = corr_matrix_k_k[0, 0]
+
+    p_k_a_a = corr_matrix_p_k[1, 1]
+    k_p_a_a = corr_matrix_k_p[1, 1]
+    p_p_a_a = corr_matrix_p_p[1, 1]
+    k_k_a_a = corr_matrix_k_k[1, 1]
+
+    return (
+        [p_k_fwd, k_p_fwd, p_p_fwd, k_k_fwd],
+        [
+            p_k_ps_ps,
+            k_p_ps_ps,
+            p_p_ps_ps,
+            k_k_ps_ps,
+        ],
+        [
+            p_k_a_a,
+            k_p_a_a,
+            p_p_a_a,
+            k_k_a_a,
+        ],
+    )
+
+
 def fit_correlator(
     fit_corr,
     plotdir,
+    datadir,
     name="",
     ylabel=r"$R(t)$",
     ylim=False,
     time_limits=np.array([[[11, 15], [13, 20]]]),
+    tau=10,
 ):
     # ======================================================================
     # Fitting the 3pt function
@@ -1006,7 +2210,8 @@ def fit_correlator(
         fit_corr,
         [const_function],
         time_limits,
-        plotdir,
+        datadir,
+        # plotdir / "data/",
         name,
         Nt_min=2,
     )
@@ -1023,7 +2228,8 @@ def fit_correlator(
     print("\nweights:")
     print([fit["weight"] for fit in fitlist_kpi])
 
-    f, axs = plt.subplots(1, 1, figsize=(9, 6))
+    # f, axs = plt.subplots(1, 1, figsize=(9, 6))
+    f, axs = plt.subplots(1, 1, figsize=(7, 6))
     axs.errorbar(
         time,
         yavg,
@@ -1043,16 +2249,17 @@ def fit_correlator(
         color="r",
         alpha=0.6,
         linewidth=0,
-        label=rf"$|ME|={err_brackets(np.average(weighted_energy), np.std(weighted_energy))}$; $\chi^2_{{\textrm{{dof}}}} = {fit_redchisq:.2f}$",
+        label=rf"$|M|={err_brackets(np.average(weighted_energy), np.std(weighted_energy))}$; $\chi^2_{{\textrm{{dof}}}} = {fit_redchisq:.2f}$",
         zorder=3,
     )
-    axs.axvline(10, color="k", linewidth=1, linestyle="--")
+    axs.axvline(tau, color="k", linewidth=1, linestyle="--")
 
     plt.xlabel(r"$t/a$")
     plt.ylabel(ylabel, fontsize="small")
     plt.legend(fontsize="x-small")
     if ylim:
         axs.set_ylim(ylim)
+    plt.tight_layout()
     plt.savefig(plotdir / f"{name}.pdf")
     # plt.savefig(plotdir / f"{name}_zoom.pdf")
     plt.close()
@@ -1154,7 +2361,7 @@ def main_baryon():
         color="r",
         alpha=0.6,
         linewidth=0,
-        label=rf"$|ME|={err_brackets(np.average(weighted_energy), np.std(weighted_energy))}$; $\chi^2_{{\textrm{{dof}}}} = {fit_redchisq:.2f}$",
+        label=rf"$|M|={err_brackets(np.average(weighted_energy), np.std(weighted_energy))}$; $\chi^2_{{\textrm{{dof}}}} = {fit_redchisq:.2f}$",
         zorder=3,
     )
     axs.axvline(10, color="k", linewidth=1, linestyle="--")
