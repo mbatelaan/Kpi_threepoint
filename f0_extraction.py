@@ -222,5 +222,325 @@ def main():
     return
 
 
+def main_b5p50kp121095kp120512():
+    """
+    Read the fit results to the 3pt ratios at qsq=0
+    Use these to extract the value of f^0_{K pi}(0)
+    """
+
+    mystyle = Path("mystyle.txt")
+    plt.style.use(mystyle.as_posix())
+    plt.rc("text.latex", preamble=r"\usepackage{physics}")
+    plotdir = Path("./plots/b5p50kp121095kp120512/twisted_gevp/")
+    datadir = Path("./data/b5p50kp121095kp120512/twisted_gevp/")
+
+    # ======================================================================
+    # Open two-point function data for zero twist
+    twopt_datadir = Path(
+        "/Users/mbatelaan/Research/Adelaide2026/analysis/six_point_fn/data/pickles/b5p50kp121095kp120512_qsqmax_g8/"
+    )
+    with open(
+        twopt_datadir / (f"time_window_loop_pion_1exp_2exp.pkl"), "rb"
+    ) as file_in:
+        fitlist_pion_cosh = pickle.load(file_in)
+    with open(
+        twopt_datadir / (f"time_window_loop_kaon_1exp_2exp.pkl"), "rb"
+    ) as file_in:
+        fitlist_kaon_cosh = pickle.load(file_in)
+
+    weights_pion = np.array([i["weight"] for i in fitlist_pion_cosh])
+    high_weight_pion = np.argmax(weights_pion)
+    pion_energy = fitlist_pion_cosh[high_weight_pion]["param"][:, 1]
+    pion_fit = fitlist_pion_cosh[high_weight_pion]["param"]
+    pion_mass = pion_energy
+    print("pion mass = ", np.average(pion_energy))
+
+    weights_kaon = np.array([i["weight"] for i in fitlist_kaon_cosh])
+    high_weight_kaon = np.argmax(weights_kaon)
+    kaon_energy = fitlist_kaon_cosh[high_weight_kaon]["param"][:, 1]
+    kaon_fit = fitlist_kaon_cosh[high_weight_kaon]["param"]
+    # kaon_mass = np.dot(weights_kaon, energies_kaon)
+    kaon_mass = kaon_energy
+    print("kaon mass = ", np.average(kaon_energy))
+
+    # ----------------------------------------------------------------------
+    # Twisted energies
+    pion_utwist_file = Path(
+        "/Users/mbatelaan/Research/Adelaide2026/analysis/six_point_fn/data/pickles/b5p50kp121095kp120512_u-twist0.64461_g8/time_window_loop_pion_1exp_2exp.pkl"
+    )
+    kaon_stwist_file = Path(
+        "/Users/mbatelaan/Research/Adelaide2026/analysis/six_point_fn/data/pickles/b5p50kp121095kp120512_s-twist1.08508_g8/time_window_loop_kaon_1exp_2exp.pkl"
+    )
+    if pion_utwist_file.is_file():
+        with open(pion_utwist_file, "rb") as file_in:
+            fitlist_pion_utwist = pickle.load(file_in)
+    else:
+        print("pion u-twist two-point function fit not found")
+        exit()
+    if kaon_stwist_file.is_file():
+        with open(kaon_stwist_file, "rb") as file_in:
+            fitlist_kaon_stwist = pickle.load(file_in)
+    else:
+        print("kaon s-twist two-point function fit not found")
+        exit()
+
+    weights_pion_utwist = np.array([i["weight"] for i in fitlist_pion_utwist])
+    sort_weight = np.argsort(weights_pion_utwist)[::-1]
+    pion_fit_utwist = fitlist_pion_utwist[sort_weight[0]]["param"]
+    pion_utwist_energy = pion_fit_utwist[:, 1]
+    print("pion energy = ", np.average(pion_utwist_energy))
+
+    weights_kaon_stwist = np.array([i["weight"] for i in fitlist_kaon_stwist])
+    sort_weight = np.argsort(weights_kaon_stwist)[::-1]
+    kaon_fit_stwist = fitlist_kaon_stwist[sort_weight[0]]["param"]
+    kaon_stwist_energy = kaon_fit_stwist[:, 1]
+    print("kaon energy = ", np.average(kaon_stwist_energy))
+
+    # ----------------------------------------------------------------------
+    # Read fit to ratio of threept over twopt function
+    threepoint_file4c = datadir / (
+        "time_window_loop_3pt_ratio1_kpi_u-twist_fwd_fit_constant.pkl"
+        # "time_window_loop_3pt_double_kpi_fit_utwist_constant.pkl"
+    )
+    threepoint_file5c = datadir / (
+        "time_window_loop_3pt_ratio1_kpi_s-twist_fwd_fit_constant.pkl"
+        # "time_window_loop_3pt_double_kpi_fit_stwist_constant.pkl"
+    )
+    with open(threepoint_file4c, "rb") as file_in:
+        data_3pt_4c = pickle.load(file_in)
+    bestfit4c = data_3pt_4c[0]
+    dbl_fit_utwist = bestfit4c["param"][:, 0]
+    with open(threepoint_file5c, "rb") as file_in:
+        data_3pt_5c = pickle.load(file_in)
+    bestfit5c = data_3pt_5c[0]
+    dbl_fit_stwist = bestfit5c["param"][:, 0]
+
+    # # ----------------------------------------------------------------------
+    # print()
+    # print(np.average(quad_fit_utwist), " +- ", np.std(quad_fit_utwist))
+    # print(np.average(quad_fit_stwist), " +- ", np.std(quad_fit_stwist))
+
+    # print()
+    # print(np.average(resc_fit_utwist), " +- ", np.std(resc_fit_utwist))
+    # print(np.average(resc_fit_stwist), " +- ", np.std(resc_fit_stwist))
+
+    print()
+    print(np.average(dbl_fit_utwist), " +- ", np.std(dbl_fit_utwist))
+    print(np.average(dbl_fit_stwist), " +- ", np.std(dbl_fit_stwist))
+    print()
+
+    # # ----------------------------------------------------------------------
+    # # make the ratios
+    # ratio_f0 = (
+    #     quad_fit_stwist * (kaon_mass - pion_utwist_energy)
+    #     - quad_fit_utwist * (kaon_stwist_energy - pion_mass)
+    # ) / (
+    #     (kaon_stwist_energy + pion_mass) * (kaon_mass - pion_utwist_energy)
+    #     - (kaon_mass + pion_utwist_energy) * (kaon_stwist_energy - pion_mass)
+    # )
+    # print("f^0_{K pi}(0) = ")
+    # print(np.average(ratio_f0), " +- ", np.std(ratio_f0))
+
+    # ratio_f0_resc = (
+    #     resc_fit_stwist * (kaon_mass - pion_utwist_energy)
+    #     - resc_fit_utwist * (kaon_stwist_energy - pion_mass)
+    # ) / (
+    #     (kaon_stwist_energy + pion_mass) * (kaon_mass - pion_utwist_energy)
+    #     - (kaon_mass + pion_utwist_energy) * (kaon_stwist_energy - pion_mass)
+    # )
+    # print("f^0_{K pi}(0) = ")
+    # print(np.average(ratio_f0_resc), " +- ", np.std(ratio_f0_resc))
+
+    ratio_f0_dbl = (
+        dbl_fit_stwist * (kaon_mass - pion_utwist_energy)
+        - dbl_fit_utwist * (kaon_stwist_energy - pion_mass)
+    ) / (
+        (kaon_stwist_energy + pion_mass) * (kaon_mass - pion_utwist_energy)
+        - (kaon_mass + pion_utwist_energy) * (kaon_stwist_energy - pion_mass)
+    )
+    print("f^0_{K pi}(0) = ")
+    print(np.average(ratio_f0_dbl), " +- ", np.std(ratio_f0_dbl))
+
+    # # ----------------------------------------------------------------------
+    # # Write the values for f^0(0)
+    # filename = "f0_0_3pt_quad_kpi.pkl"
+    # with open(datadir / filename, "wb") as file_out:
+    #     pickle.dump(ratio_f0, file_out)
+
+    # filename = "f0_0_3pt_double_fitparam_kpi.pkl"
+    # with open(datadir / filename, "wb") as file_out:
+    #     pickle.dump(ratio_f0_resc, file_out)
+
+    filename = "f0_0_3pt_double_kpi.pkl"
+    with open(datadir / filename, "wb") as file_out:
+        pickle.dump(ratio_f0_dbl, file_out)
+
+    return
+
+
+def main_b5p50kp121095kp120512_big():
+    """
+    Read the fit results to the 3pt ratios at qsq=0
+    Use these to extract the value of f^0_{K pi}(0)
+    """
+
+    mystyle = Path("mystyle.txt")
+    plt.style.use(mystyle.as_posix())
+    plt.rc("text.latex", preamble=r"\usepackage{physics}")
+    plotdir = Path("./plots/b5p50kp121095kp120512/twisted_gevp_big/")
+    datadir = Path("./data/b5p50kp121095kp120512/twisted_gevp_big/")
+    # plotdir = Path("./plots/twisted/")
+    # datadir = Path("./plots/twisted/data/")
+    # datadir_tau13 = Path("./data/twisted_tau13/")
+
+    nboot = 500
+    nbin = 1
+
+    # ======================================================================
+    # Open two-point function data for zero twist
+    twopt_datadir = Path(
+        "/Users/mbatelaan/Research/Adelaide2026/analysis/six_point_fn/data/pickles/b5p50kp121095kp120512_qsqmax_g8/"
+    )
+    with open(
+        twopt_datadir / (f"time_window_loop_pion_1exp_2exp.pkl"), "rb"
+    ) as file_in:
+        fitlist_pion_cosh = pickle.load(file_in)
+    with open(
+        twopt_datadir / (f"time_window_loop_kaon_1exp_2exp.pkl"), "rb"
+    ) as file_in:
+        fitlist_kaon_cosh = pickle.load(file_in)
+
+    weights_pion = np.array([i["weight"] for i in fitlist_pion_cosh])
+    high_weight_pion = np.argmax(weights_pion)
+    pion_energy = fitlist_pion_cosh[high_weight_pion]["param"][:, 1]
+    pion_fit = fitlist_pion_cosh[high_weight_pion]["param"]
+    pion_mass = pion_energy
+    print("pion mass = ", np.average(pion_energy))
+
+    weights_kaon = np.array([i["weight"] for i in fitlist_kaon_cosh])
+    high_weight_kaon = np.argmax(weights_kaon)
+    kaon_energy = fitlist_kaon_cosh[high_weight_kaon]["param"][:, 1]
+    kaon_fit = fitlist_kaon_cosh[high_weight_kaon]["param"]
+    # kaon_mass = np.dot(weights_kaon, energies_kaon)
+    kaon_mass = kaon_energy
+    print("kaon mass = ", np.average(kaon_energy))
+
+    # ----------------------------------------------------------------------
+    # Twisted energies
+    pion_utwist_file = Path(
+        "/Users/mbatelaan/Research/Adelaide2026/analysis/six_point_fn/data/pickles/b5p50kp121095kp120512_u-twist0.64461_g8/time_window_loop_pion_1exp_2exp.pkl"
+    )
+    kaon_stwist_file = Path(
+        "/Users/mbatelaan/Research/Adelaide2026/analysis/six_point_fn/data/pickles/b5p50kp121095kp120512_s-twist1.08508_g8/time_window_loop_kaon_1exp_2exp.pkl"
+    )
+    if pion_utwist_file.is_file():
+        with open(pion_utwist_file, "rb") as file_in:
+            fitlist_pion_utwist = pickle.load(file_in)
+    else:
+        print("pion u-twist two-point function fit not found")
+        exit()
+    if kaon_stwist_file.is_file():
+        with open(kaon_stwist_file, "rb") as file_in:
+            fitlist_kaon_stwist = pickle.load(file_in)
+    else:
+        print("kaon s-twist two-point function fit not found")
+        exit()
+
+    weights_pion_utwist = np.array([i["weight"] for i in fitlist_pion_utwist])
+    sort_weight = np.argsort(weights_pion_utwist)[::-1]
+    pion_fit_utwist = fitlist_pion_utwist[sort_weight[0]]["param"]
+    pion_utwist_energy = pion_fit_utwist[:, 1]
+    print("pion energy = ", np.average(pion_utwist_energy))
+
+    weights_kaon_stwist = np.array([i["weight"] for i in fitlist_kaon_stwist])
+    sort_weight = np.argsort(weights_kaon_stwist)[::-1]
+    kaon_fit_stwist = fitlist_kaon_stwist[sort_weight[0]]["param"]
+    kaon_stwist_energy = kaon_fit_stwist[:, 1]
+    print("kaon energy = ", np.average(kaon_stwist_energy))
+
+    # ----------------------------------------------------------------------
+    # Read fit to ratio of threept over twopt function
+    threepoint_file4c = datadir / (
+        "time_window_loop_3pt_ratio1_kpi_u-twist_fwd_fit_big_constant.pkl"
+        # "time_window_loop_3pt_double_kpi_fit_utwist_constant.pkl"
+    )
+    threepoint_file5c = datadir / (
+        "time_window_loop_3pt_ratio1_kpi_s-twist_fwd_fit_big_constant.pkl"
+        # "time_window_loop_3pt_double_kpi_fit_stwist_constant.pkl"
+    )
+    with open(threepoint_file4c, "rb") as file_in:
+        data_3pt_4c = pickle.load(file_in)
+    bestfit4c = data_3pt_4c[0]
+    dbl_fit_utwist = bestfit4c["param"][:, 0]
+    with open(threepoint_file5c, "rb") as file_in:
+        data_3pt_5c = pickle.load(file_in)
+    bestfit5c = data_3pt_5c[0]
+    dbl_fit_stwist = bestfit5c["param"][:, 0]
+
+    # # ----------------------------------------------------------------------
+    # print()
+    # print(np.average(quad_fit_utwist), " +- ", np.std(quad_fit_utwist))
+    # print(np.average(quad_fit_stwist), " +- ", np.std(quad_fit_stwist))
+
+    # print()
+    # print(np.average(resc_fit_utwist), " +- ", np.std(resc_fit_utwist))
+    # print(np.average(resc_fit_stwist), " +- ", np.std(resc_fit_stwist))
+
+    print()
+    print(np.average(dbl_fit_utwist), " +- ", np.std(dbl_fit_utwist))
+    print(np.average(dbl_fit_stwist), " +- ", np.std(dbl_fit_stwist))
+    print()
+
+    # # ----------------------------------------------------------------------
+    # # make the ratios
+    # ratio_f0 = (
+    #     quad_fit_stwist * (kaon_mass - pion_utwist_energy)
+    #     - quad_fit_utwist * (kaon_stwist_energy - pion_mass)
+    # ) / (
+    #     (kaon_stwist_energy + pion_mass) * (kaon_mass - pion_utwist_energy)
+    #     - (kaon_mass + pion_utwist_energy) * (kaon_stwist_energy - pion_mass)
+    # )
+    # print("f^0_{K pi}(0) = ")
+    # print(np.average(ratio_f0), " +- ", np.std(ratio_f0))
+
+    # ratio_f0_resc = (
+    #     resc_fit_stwist * (kaon_mass - pion_utwist_energy)
+    #     - resc_fit_utwist * (kaon_stwist_energy - pion_mass)
+    # ) / (
+    #     (kaon_stwist_energy + pion_mass) * (kaon_mass - pion_utwist_energy)
+    #     - (kaon_mass + pion_utwist_energy) * (kaon_stwist_energy - pion_mass)
+    # )
+    # print("f^0_{K pi}(0) = ")
+    # print(np.average(ratio_f0_resc), " +- ", np.std(ratio_f0_resc))
+
+    ratio_f0_dbl = (
+        dbl_fit_stwist * (kaon_mass - pion_utwist_energy)
+        - dbl_fit_utwist * (kaon_stwist_energy - pion_mass)
+    ) / (
+        (kaon_stwist_energy + pion_mass) * (kaon_mass - pion_utwist_energy)
+        - (kaon_mass + pion_utwist_energy) * (kaon_stwist_energy - pion_mass)
+    )
+    print("f^0_{K pi}(0) = ")
+    print(np.average(ratio_f0_dbl), " +- ", np.std(ratio_f0_dbl))
+
+    # # ----------------------------------------------------------------------
+    # # Write the values for f^0(0)
+    # filename = "f0_0_3pt_quad_kpi.pkl"
+    # with open(datadir / filename, "wb") as file_out:
+    #     pickle.dump(ratio_f0, file_out)
+
+    # filename = "f0_0_3pt_double_fitparam_kpi.pkl"
+    # with open(datadir / filename, "wb") as file_out:
+    #     pickle.dump(ratio_f0_resc, file_out)
+
+    filename = "f0_0_3pt_double_kpi.pkl"
+    with open(datadir / filename, "wb") as file_out:
+        pickle.dump(ratio_f0_dbl, file_out)
+
+    return
+
+
 if __name__ == "__main__":
     main()
+    main_b5p50kp121095kp120512()
+    main_b5p50kp121095kp120512_big()

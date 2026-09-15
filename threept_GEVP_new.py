@@ -852,8 +852,12 @@ def meson_gevp_twist():
     plt.style.use(mystyle.as_posix())
     plt.rc("text.latex", preamble=r"\usepackage{physics}")
     # plotdir = Path("./plots/twisted/")
-    plotdir = Path("./plots/twisted_new/")
-    datadir = Path("./data/twisted_new/")
+    # plotdir = Path("./plots/twisted_new/")
+    # datadir = Path("./data/twisted_new/")
+    plotdir = Path("./plots/b5p50kp121095kp120512/twisted_gevp/")
+    datadir = Path("./data/b5p50kp121095kp120512/twisted_gevp/")
+    datadir.mkdir(parents=True, exist_ok=True)
+    plotdir.mkdir(parents=True, exist_ok=True)
 
     nboot = 500
     nbin = 1
@@ -908,12 +912,14 @@ def meson_gevp_twist():
         exit()
 
     weights_pion_utwist = np.array([i["weight"] for i in fitlist_pion_utwist])
-    sort_weight = np.argsort(weights_pion_utwist)
+    sort_weight = np.argsort(weights_pion_utwist)[::-1]
+    # print(weights_pion_utwist[sort_weight])
     pion_fit_utwist = fitlist_pion_utwist[sort_weight[0]]["param"]
-    pion_utwist_energy = pion_fit_utwist[:, 1]
+    pion_utwist_energy_sort = pion_fit_utwist[:, 1]
+    pion_utwist_energy = fitlist_pion_utwist[0]["param"][:, 1]
 
     weights_kaon_stwist = np.array([i["weight"] for i in fitlist_kaon_stwist])
-    sort_weight = np.argsort(weights_kaon_stwist)
+    sort_weight = np.argsort(weights_kaon_stwist)[::-1]
     kaon_fit_stwist = fitlist_kaon_stwist[sort_weight[0]]["param"]
     kaon_stwist_energy = kaon_fit_stwist[:, 1]
 
@@ -928,6 +934,7 @@ def meson_gevp_twist():
     print("pion energy = ", np.average(pion_energy))
     print("kaon energy = ", np.average(kaon_energy))
     print("utwist energy = ", np.average(pion_utwist_energy))
+    print("utwist energy (sort) = ", np.average(pion_utwist_energy_sort))
     print("stwist energy = ", np.average(kaon_stwist_energy))
     print("\n\n")
 
@@ -953,7 +960,7 @@ def meson_gevp_twist():
     kaon_disp = np.sqrt(kaon_energy[:, None] ** 2 + moms**2)
 
     # ======================================================================
-    # Plotting the principal correlators
+    # Plotting the dispersion relation
     f, axs = plt.subplots(1, 1, figsize=(7, 5), sharex=True, sharey=True)
     plt.plot(
         theta_range[0],
@@ -1066,12 +1073,16 @@ def meson_gevp_twist():
     pickledir = Path("./b5p50kp121095kp120512/threept_u-twist0.64461_s-twist1.08508_g8")
     pion_dir = "meson_qcdsf"
     kaon_dir = "meson_qcdsf"
+    time_choice = 29
+    delta_t = 6
     evals_0twist, evecs_0twist, Gt_0twist, mesons_2pt = meson_2pt_projections(
         pickledir,
         plotdir,
         datadir,
         pion_dir=pion_dir,
         kaon_dir=kaon_dir,
+        time_choice=time_choice,
+        delta_t=delta_t,
         label="0twist",
         kappa_1="kp121095kp121095",
         kappa_2="kp120512kp121095",
@@ -1089,26 +1100,47 @@ def meson_gevp_twist():
         datadir,
         pion_dir=pion_dir_twist,
         kaon_dir=kaon_dir_twist,
+        time_choice=time_choice,
+        delta_t=delta_t,
         label="utwist-stwist",
         kappa_1="kp121095kp121095",
         kappa_2="kp120512kp121095",
     )
+    # pion_ps_ps = mesons_2pt[0]
+    # kaon_ps_ps = mesons_2pt[2]
+    # pion_a_a = mesons_2pt[1]
+    # kaon_a_a = mesons_2pt[3]
+    # pion_utwist_ps_ps = mesons_2pt_twist[0]
+    # kaon_stwist_ps_ps = mesons_2pt_twist[2]
+    # pion_utwist_a_a = mesons_2pt_twist[1]
+    # kaon_stwist_a_a = mesons_2pt_twist[3]
+    # pion_fwd = Gt_0twist[0]
+    # kaon_fwd = Gt_0twist[2]
+    # pion_bwd = Gt_0twist[1]
+    # kaon_bwd = Gt_0twist[3]
+    # pion_utwist_fwd = Gt_twist[0]
+    # kaon_stwist_fwd = Gt_twist[2]
+    # pion_utwist_bwd = Gt_twist[1]
+    # kaon_stwist_bwd = Gt_twist[3]
+
     pion_ps_ps = mesons_2pt[0]
-    kaon_ps_ps = mesons_2pt[2]
-    pion_a_a = mesons_2pt[1]
+    kaon_ps_ps = mesons_2pt[1]
+    pion_a_a = mesons_2pt[2]
     kaon_a_a = mesons_2pt[3]
     pion_utwist_ps_ps = mesons_2pt_twist[0]
-    kaon_stwist_ps_ps = mesons_2pt_twist[2]
-    pion_utwist_a_a = mesons_2pt_twist[1]
+    kaon_stwist_ps_ps = mesons_2pt_twist[1]
+    pion_utwist_a_a = mesons_2pt_twist[2]
     kaon_stwist_a_a = mesons_2pt_twist[3]
-    pion_fwd = Gt_0twist[0]
-    kaon_fwd = Gt_0twist[2]
-    pion_bwd = Gt_0twist[1]
-    kaon_bwd = Gt_0twist[3]
-    pion_utwist_fwd = Gt_twist[0]
-    kaon_stwist_fwd = Gt_twist[2]
-    pion_utwist_bwd = Gt_twist[1]
-    kaon_stwist_bwd = Gt_twist[3]
+    pion_fwd = Gt_0twist[2]
+    kaon_fwd = Gt_0twist[3]
+    pion_bwd = Gt_0twist[0]
+    kaon_bwd = Gt_0twist[1]
+    # pion_utwist_fwd = Gt_twist[4]
+    # kaon_stwist_fwd = Gt_twist[5]
+    pion_utwist_fwd = Gt_twist[2]
+    kaon_stwist_fwd = Gt_twist[3]
+    pion_utwist_bwd = Gt_twist[0]
+    kaon_stwist_bwd = Gt_twist[1]
 
     plot_eff_proj_corrs(
         [pion_ps_ps, pion_a_a, pion_fwd, pion_bwd],
@@ -1171,6 +1203,8 @@ def meson_gevp_twist():
 
     # ======================================================================
     # pion twisted, kaon at rest
+    print("\n\nEvec shape:\n")
+    print(np.shape(evecs_twist[:2]))
     (
         [p_k_fwd, k_p_fwd, p_p_fwd, k_k_fwd],
         [
@@ -1191,6 +1225,7 @@ def meson_gevp_twist():
         datadir,
         evecs_twist[:2],
         evecs_0twist[2:],
+        fwd_index=1,
         p_k_dir=threept_dir_utwist,
         k_p_dir=threept_dir_utwist,
         p_p_dir=threept_dir_pion_utwist,
@@ -1217,8 +1252,15 @@ def meson_gevp_twist():
         plotname="3pt_pi-k_double-ratio_gevp_utwist",
         plotdir=plotdir,
         v_line=10,
+    )
+    plot_corr(
+        ratio1_dbl_utwist_fwd,
+        plotname="3pt_pi-k_double-ratio_gevp_utwist_ylim",
+        plotdir=plotdir,
+        v_line=10,
         # ylim=(0.315, 0.4),
         ylim=(0.29, 0.32),
+        # ylim=(0.14, 0.2),
     )
 
     # ----------------------------------------------------------------------
@@ -1343,6 +1385,7 @@ def meson_gevp_twist():
         datadir,
         evecs_0twist[:2],
         evecs_twist[2:],
+        fwd_index=1,
         p_k_dir=threept_dir_stwist,
         k_p_dir=threept_dir_stwist,
         p_p_dir=threept_dir_pion,
@@ -1632,12 +1675,12 @@ def meson_gevp_big():
         exit()
 
     weights_pion_utwist = np.array([i["weight"] for i in fitlist_pion_utwist])
-    sort_weight = np.argsort(weights_pion_utwist)
+    sort_weight = np.argsort(weights_pion_utwist)[::-1]
     pion_fit_utwist = fitlist_pion_utwist[sort_weight[0]]["param"]
     pion_utwist_energy = pion_fit_utwist[:, 1]
 
     weights_kaon_stwist = np.array([i["weight"] for i in fitlist_kaon_stwist])
-    sort_weight = np.argsort(weights_kaon_stwist)
+    sort_weight = np.argsort(weights_kaon_stwist)[::-1]
     kaon_fit_stwist = fitlist_kaon_stwist[sort_weight[0]]["param"]
     kaon_stwist_energy = kaon_fit_stwist[:, 1]
 
@@ -2166,8 +2209,10 @@ def meson_gevp_big_b5p50kp121040kp120620():
     plt.style.use(mystyle.as_posix())
     plt.rc("text.latex", preamble=r"\usepackage{physics}")
     # plotdir = Path("./plots/twisted/")
-    plotdir = Path("./plots/twisted_gevp_big/")
-    datadir = Path("./data/twisted_gevp_big/")
+    # plotdir = Path("./plots/twisted_gevp_big/")
+    # datadir = Path("./data/twisted_gevp_big/")
+    plotdir = Path("./plots/b5p50kp121040kp120620/twisted_gevp_big/")
+    datadir = Path("./data/b5p50kp121040kp120620/twisted_gevp_big/")
     datadir.mkdir(parents=True, exist_ok=True)
     plotdir.mkdir(parents=True, exist_ok=True)
 
@@ -2219,12 +2264,12 @@ def meson_gevp_big_b5p50kp121040kp120620():
         exit()
 
     weights_pion_utwist = np.array([i["weight"] for i in fitlist_pion_utwist])
-    sort_weight = np.argsort(weights_pion_utwist)
+    sort_weight = np.argsort(weights_pion_utwist)[::-1]
     pion_fit_utwist = fitlist_pion_utwist[sort_weight[0]]["param"]
     pion_utwist_energy = pion_fit_utwist[:, 1]
 
     weights_kaon_stwist = np.array([i["weight"] for i in fitlist_kaon_stwist])
-    sort_weight = np.argsort(weights_kaon_stwist)
+    sort_weight = np.argsort(weights_kaon_stwist)[::-1]
     kaon_fit_stwist = fitlist_kaon_stwist[sort_weight[0]]["param"]
     kaon_stwist_energy = kaon_fit_stwist[:, 1]
 
@@ -2287,7 +2332,15 @@ def meson_gevp_big_b5p50kp121040kp120620():
     delta_t = 2
     # time_choice = 3
     # delta_t = 5
-    evals_twist, evecs_twist, Gt_twist, mesons_2pt_twist = meson_2pt_projections_big(
+    # evals_twist, evecs_twist, Gt_twist, mesons_2pt_twist
+    (
+        evals_twist,
+        evecs_twist,
+        Gt_twist,
+        mesons_2pt_twist,
+        corr_matrix_pions,
+        corr_matrix_kaons,
+    ) = meson_2pt_projections_big(
         pickledir,
         plotdir,
         datadir,
@@ -2408,10 +2461,10 @@ def meson_gevp_big_b5p50kp121040kp120620():
     threept_dir_utwist_stwist = "meson-3pt_US_SU_u-twist_s-twist"
     threept_dir_pion_utwist = "meson-3pt_UU_SS_u-twist_s-twist"
     threept_dir_kaon_stwist = "meson-3pt_UU_SS_u-twist_s-twist"
-    threept_dir_pion = "meson-3pt_UU_SS_u-twist_s-twist"
-    threept_dir_kaon = "meson-3pt_UU_SS_u-twist_s-twist"
-    # threept_dir_pion = "meson-3pt_UU_US"
-    # threept_dir_kaon = "meson-3pt_SS_SU"
+    # threept_dir_pion = "meson-3pt_UU_SS_u-twist_s-twist"
+    # threept_dir_kaon = "meson-3pt_UU_SS_u-twist_s-twist"
+    threept_dir_pion = "meson-3pt_UU_US"
+    threept_dir_kaon = "meson-3pt_SS_SU"
 
     # ======================================================================
     # pion twisted, kaon at rest
@@ -2443,12 +2496,11 @@ def meson_gevp_big_b5p50kp121040kp120620():
         label="utwist",
         kappa_1="kp121040kp121040",
         kappa_2="kp120620kp121040",
-        # kappa_2="kp121040kp120620",
     )
 
     # ======================================================================
     # Make the ratios for the 3pt functions
-    tmax = 30
+    tmax = 45
     tau = 10
 
     # ----------------------------------------------------------------------
@@ -2462,7 +2514,6 @@ def meson_gevp_big_b5p50kp121040kp120620():
         plotname="3pt_pi-k_double-ratio_GEVP_utwist_big",
         plotdir=plotdir,
         v_line=10,
-        # ylim=(0.315, 0.4),
         ylim=(0.315, 0.33),
     )
 
@@ -2491,7 +2542,6 @@ def meson_gevp_big_b5p50kp121040kp120620():
     # ----------------------------------------------------------------------
     # Plot all ratio1
     plot_proj_corrs(
-        # [bsdata_dbl_ps_ps, bsdata_dbl_a_a, bsdata_dbl],
         [ratio1_dbl_utwist_ps_ps, ratio1_dbl_utwist_a_a, ratio1_dbl_utwist_fwd],
         plotdir,
         plot_name="_kaon_and_pion_dbl_ratio1_utwist_big",
@@ -2513,27 +2563,70 @@ def meson_gevp_big_b5p50kp121040kp120620():
     )
 
     ### CANNOT DO THIS YET! DON'T HAVE THE K->K and pi->pi WITHOUT MOMENTA!!!
-    # # ----------------------------------------------------------------------
-    # # Ratio 2 with all four 3-point functions
-    # denominator = np.abs(k_k_fwd[:, :tmax] * p_p_fwd[:, :tmax]) ** (-1)
-    # numerator = np.abs(p_k_fwd[:, :tmax] * k_p_fwd[:, :tmax])
-    # bsdata_7a = np.sqrt(np.einsum("ij,ij->ij", numerator, denominator))
-    # quad_ratio_bs = np.einsum("ij,i->ij", bsdata_7a, energy_factor_utwist)
+    # ----------------------------------------------------------------------
+    # Ratio 2 with all four 3-point functions
+    denominator = np.abs(k_k_fwd[:, :tmax] * p_p_fwd[:, :tmax]) ** (-1)
+    numerator = np.abs(p_k_fwd[:, :tmax] * k_p_fwd[:, :tmax])
+    bsdata_7a = np.sqrt(np.einsum("ij,ij->ij", numerator, denominator))
+    quad_ratio_bs = np.einsum("ij,i->ij", bsdata_7a, energy_factor_utwist)
 
-    # plot_corr(
-    #     quad_ratio_bs[11:],
-    #     plotname="3pt_pi-k_quad-ratio_u-twist_fwd",
-    #     plotdir=plotdir,
-    #     # v_line=10,
-    # )
-    # plot_corr(
-    #     quad_ratio_bs,
-    #     plotname="3pt_pi-k_quad-ratio_u-twist_fwd_ylim",
-    #     plotdir=plotdir,
-    #     v_line=10,
-    #     ylim=(0.2, 0.5),
-    # )
+    plot_corr(
+        quad_ratio_bs[11:],
+        plotname="3pt_pi-k_quad-ratio_u-twist_fwd",
+        plotdir=plotdir,
+        # v_line=10,
+    )
+    plot_corr(
+        quad_ratio_bs,
+        plotname="3pt_pi-k_quad-ratio_u-twist_fwd_ylim",
+        plotdir=plotdir,
+        v_line=10,
+        ylim=(0.315, 0.33),
+    )
+    
+    # ----------------------------------------------------------------------
+    # Ratio 2 with all four 3-point functions for g5-g5 operators
+    denominator = np.abs(k_k_ps_ps[:, :tmax] * p_p_ps_ps[:, :tmax]) ** (-1)
+    numerator = np.abs(p_k_ps_ps[:, :tmax] * k_p_ps_ps[:, :tmax])
+    bsdata_7a = np.sqrt(np.einsum("ij,ij->ij", numerator, denominator))
+    quad_ratio_bs_ps_ps = np.einsum("ij,i->ij", bsdata_7a, energy_factor_utwist)
+    plot_corr(
+        quad_ratio_bs_ps_ps,
+        plotname="3pt_pi-k_quad-ratio_u-twist_ps_ps_ylim",
+        plotdir=plotdir,
+        v_line=10,
+        ylim=(0.315, 0.33),
+    )
 
+    # ----------------------------------------------------------------------
+    # Ratio 2 with all four 3-point functions for g4g5-g4g5 operators
+    denominator = np.abs(k_k_a_a[:, :tmax] * p_p_a_a[:, :tmax]) ** (-1)
+    numerator = np.abs(p_k_a_a[:, :tmax] * k_p_a_a[:, :tmax])
+    bsdata_7a = np.sqrt(np.einsum("ij,ij->ij", numerator, denominator))
+    quad_ratio_bs_a_a = np.einsum("ij,i->ij", bsdata_7a, energy_factor_utwist)
+    plot_corr(
+        quad_ratio_bs_a_a,
+        plotname="3pt_pi-k_quad-ratio_u-twist_a_a_ylim",
+        plotdir=plotdir,
+        v_line=10,
+        ylim=(0.315, 0.33),
+        # ylim=(0.30, 0.33),
+    )
+
+    # ----------------------------------------------------------------------
+    # Ratio_2 comparison
+    plot_proj_corrs(
+        [quad_ratio_bs_ps_ps,quad_ratio_bs_a_a, quad_ratio_bs],
+        plotdir,
+        plot_name="_kaon_and_pion_quad_ratio2_utwist_big",
+        labels=[r"$\gamma_5,\gamma_5$", r"$\gamma_4\gamma_5,\gamma_4\gamma_5$", "GEVP"],
+        ylim=(0.315, 0.33),
+        # ylim=(0.30, 0.33),
+        title="u-quark twisted",
+        ylabel=r"$R_2(t)$",
+    )
+
+    
     # ======================================================================
     # pion at rest, kaon twisted
     # s-twist
@@ -2635,8 +2728,1254 @@ def meson_gevp_big_b5p50kp121040kp120620():
     return
 
 
+def meson_gevp_big_b5p50kp121095kp120512():
+    """
+    Read the meson 3pt functions and 2pt functions. Construct a ratio to fit and plot
+    For 3pt correlators at qsq_max
+    Making ratios which should equal the renormalised matrix element
+    Use the projected operators for the pion and kaon (mixing PS and A_4 operators)
+    """
+
+    mystyle = Path("mystyle.txt")
+    plt.style.use(mystyle.as_posix())
+    plt.rc("text.latex", preamble=r"\usepackage{physics}")
+    # plotdir = Path("./plots/twisted/")
+    plotdir = Path("./plots/b5p50kp121095kp120512/twisted_gevp_big/")
+    datadir = Path("./data/b5p50kp121095kp120512/twisted_gevp_big/")
+    datadir.mkdir(parents=True, exist_ok=True)
+    plotdir.mkdir(parents=True, exist_ok=True)
+
+    nboot = 500
+    nbin = 1
+    conf_num_u = "497"
+    # ======================================================================
+    # Open two-point function data for zero twist
+    twopt_datadir = Path(
+        "/Users/mbatelaan/Research/Adelaide2026/analysis/six_point_fn/data/pickles/b5p50kp121095kp120512_qsqmax_g8/"
+    )
+    with open(
+        twopt_datadir / (f"time_window_loop_pion_1exp_2exp.pkl"), "rb"
+    ) as file_in:
+        fitlist_pion_cosh = pickle.load(file_in)
+    with open(
+        twopt_datadir / (f"time_window_loop_kaon_1exp_2exp.pkl"), "rb"
+    ) as file_in:
+        fitlist_kaon_cosh = pickle.load(file_in)
+
+    weights_pion = np.array([i["weight"] for i in fitlist_pion_cosh])
+    high_weight_pion = np.argmax(weights_pion)
+    pion_energy = fitlist_pion_cosh[high_weight_pion]["param"][:, 1]
+    pion_fit = fitlist_pion_cosh[high_weight_pion]["param"]
+    print("pion energy = ", np.average(pion_energy))
+
+    weights_kaon = np.array([i["weight"] for i in fitlist_kaon_cosh])
+    high_weight_kaon = np.argmax(weights_kaon)
+    kaon_energy = fitlist_kaon_cosh[high_weight_kaon]["param"][:, 1]
+    kaon_fit = fitlist_kaon_cosh[high_weight_kaon]["param"]
+    print("kaon energy = ", np.average(kaon_energy))
+
+    # ----------------------------------------------------------------------
+    # Twisted energies
+    pion_utwist_file = Path(
+        "/Users/mbatelaan/Research/Adelaide2026/analysis/six_point_fn/data/pickles/b5p50kp121095kp120512_u-twist0.64461_g8/time_window_loop_pion_1exp_2exp.pkl"
+    )
+    kaon_stwist_file = Path(
+        "/Users/mbatelaan/Research/Adelaide2026/analysis/six_point_fn/data/pickles/b5p50kp121095kp120512_s-twist1.08508_g8/time_window_loop_kaon_1exp_2exp.pkl"
+    )
+    if pion_utwist_file.is_file():
+        with open(pion_utwist_file, "rb") as file_in:
+            fitlist_pion_utwist = pickle.load(file_in)
+    else:
+        print("pion u-twist two-point function fit not found")
+        exit()
+    if kaon_stwist_file.is_file():
+        with open(kaon_stwist_file, "rb") as file_in:
+            fitlist_kaon_stwist = pickle.load(file_in)
+    else:
+        print("kaon s-twist two-point function fit not found")
+        exit()
+
+    weights_pion_utwist = np.array([i["weight"] for i in fitlist_pion_utwist])
+    sort_weight = np.argsort(weights_pion_utwist)[::-1]
+    pion_fit_utwist = fitlist_pion_utwist[sort_weight[0]]["param"]
+    pion_utwist_energy = pion_fit_utwist[:, 1]
+
+    weights_kaon_stwist = np.array([i["weight"] for i in fitlist_kaon_stwist])
+    sort_weight = np.argsort(weights_kaon_stwist)[::-1]
+    kaon_fit_stwist = fitlist_kaon_stwist[sort_weight[0]]["param"]
+    kaon_stwist_energy = kaon_fit_stwist[:, 1]
+
+    # ======================================================================
+    energy_factor_utwist = np.sqrt(4 * pion_utwist_energy * kaon_energy)
+    energy_factor_stwist = np.sqrt(4 * pion_energy * kaon_stwist_energy)
+    norm_factor = 0.863
+    print("\n\nenergy factors:")
+    print("utwist = ", np.average(energy_factor_utwist))
+    print("stwist = ", np.average(energy_factor_stwist))
+    print("\n\n")
+    print("pion energy = ", np.average(pion_energy))
+    print("kaon energy = ", np.average(kaon_energy))
+    print("utwist energy = ", np.average(pion_utwist_energy))
+    print("stwist energy = ", np.average(kaon_stwist_energy))
+    print("\n\n")
+
+    L = 32
+    utwist = 0.64461
+    stwist = 1.08508
+
+    print(utwist)
+    print(stwist)
+
+    qsq_val_utwist = (pion_utwist_energy - kaon_energy) ** 2 - (utwist * np.pi / L) ** 2
+    qsq_val_stwist = (pion_energy - kaon_stwist_energy) ** 2 - (stwist * np.pi / L) ** 2
+    print(f"{np.average(qsq_val_utwist)=}")
+    print(f"{np.std(qsq_val_utwist)=}")
+
+    print(f"{np.average(qsq_val_stwist)=}")
+    print(f"{np.std(qsq_val_stwist)=}")
+    print("\n\n")
+
+    # ======================================================================
+    # Read the 2pt functions and do the GEVP to get the e-vecs
+    # pickledir = Path("./threept_run4")
+    # pickledir = Path("./threept_run5")
+    pickledir = Path("./b5p50kp121095kp120512/threept_u-twist0.64461_s-twist1.08508_g8")
+    pion_dir = "meson_qcdsf"
+    kaon_dir = "meson_qcdsf"
+    time_choice = 29
+    delta_t = 6
+    # time_choice = 4
+    # delta_t = 3
+    evals_0twist, evecs_0twist, Gt_0twist, mesons_2pt = meson_2pt_projections(
+        pickledir,
+        plotdir,
+        datadir,
+        pion_dir=pion_dir,
+        kaon_dir=kaon_dir,
+        time_choice=time_choice,
+        delta_t=delta_t,
+        label="0twist",
+        kappa_1="kp121095kp121095",
+        kappa_2="kp120512kp121095",
+    )
+    evecs_0twist_temp = []
+    for evec in evecs_0twist:
+        evecs_0twist_temp.append(evec[:, ::-1])
+    evecs_0twist = evecs_0twist_temp
+
+    print("\n\nNow twist")
+    pion_dir_twist = "meson-2pt_u-twist"
+    kaon_dir_twist = "meson-2pt_s-twist"
+    # pion_dir_twist = "meson-2pt_TBC"
+    # kaon_dir_twist = "meson-2pt_TBC"
+    # Good choice for the kaon:
+    # time_choice = 7
+    # delta_t = 3
+    # Pretty good for both:
+    # time_choice = 20
+    # delta_t = 11
+    # time_choice = 9
+    # delta_t = 4
+
+    # time_choice = 5
+    # delta_t = 2
+
+    # Good choice
+    time_choice = 4
+    delta_t = 2
+
+    (
+        evals_twist,
+        evecs_twist,
+        Gt_twist,
+        mesons_2pt_twist,
+        corr_matrix_pions,
+        corr_matrix_kaons,
+    ) = meson_2pt_projections_big(
+        pickledir,
+        plotdir,
+        datadir,
+        pion_dir=pion_dir_twist,
+        kaon_dir=kaon_dir_twist,
+        time_choice=time_choice,
+        delta_t=delta_t,
+        label="utwist-stwist",
+        kappa_1="kp121095kp121095",
+        kappa_2="kp120512kp121095",
+    )
+    print("evecs")
+    print(np.shape(evecs_twist))
+    print(evecs_twist[0])
+
+    pion_ps_ps = mesons_2pt[0]
+    kaon_ps_ps = mesons_2pt[1]
+    pion_a_a = mesons_2pt[2]
+    kaon_a_a = mesons_2pt[3]
+    pion_utwist_ps_ps = mesons_2pt_twist[0]
+    kaon_stwist_ps_ps = mesons_2pt_twist[1]
+    pion_utwist_a_a = mesons_2pt_twist[2]
+    kaon_stwist_a_a = mesons_2pt_twist[3]
+    pion_utwist_a2_a2 = mesons_2pt_twist[4]
+    kaon_stwist_a2_a2 = mesons_2pt_twist[5]
+    pion_fwd = Gt_0twist[2]
+    kaon_fwd = Gt_0twist[3]
+    pion_bwd = Gt_0twist[0]
+    kaon_bwd = Gt_0twist[1]
+    pion_utwist_fwd = Gt_twist[0]
+    kaon_stwist_fwd = Gt_twist[1]
+    pion_utwist_bwd = Gt_twist[2]
+    kaon_stwist_bwd = Gt_twist[3]
+    pion_utwist_3 = Gt_twist[4]
+    kaon_stwist_3 = Gt_twist[5]
+
+    pion_utwist_ps_a2 = corr_matrix_pions[0, 2]
+    pion_utwist_a_a2 = corr_matrix_pions[1, 2]
+    pion_utwist_a2_ps = corr_matrix_pions[2, 0]
+    pion_utwist_a2_a = corr_matrix_pions[2, 1]
+    kaon_stwist_ps_a2 = corr_matrix_kaons[0, 2]
+    kaon_stwist_a_a2 = corr_matrix_kaons[1, 2]
+    kaon_stwist_a2_ps = corr_matrix_kaons[2, 0]
+    kaon_stwist_a2_a = corr_matrix_kaons[2, 1]
+
+    plot_eff_proj_corrs(
+        [pion_ps_ps, pion_a_a, pion_fwd, pion_bwd],
+        plotdir,
+        plot_name="pion_GEVP_big",
+        labels=[
+            r"$\gamma_5,\gamma_5$",
+            r"$\gamma_4\gamma_5,\gamma_4\gamma_5$",
+            "fwd",
+            "bwd",
+        ],
+        ylim=(-0.3, 0.3),
+    )
+    plot_eff_proj_corrs(
+        [kaon_ps_ps, kaon_a_a, kaon_fwd, kaon_bwd],
+        plotdir,
+        plot_name="kaon_GEVP_BIG",
+        labels=[
+            r"$\gamma_5,\gamma_5$",
+            r"$\gamma_4\gamma_5,\gamma_4\gamma_5$",
+            "fwd",
+            "bwd",
+        ],
+        ylim=(-0.3, 0.3),
+    )
+    plot_eff_proj_corrs(
+        [
+            kaon_stwist_ps_ps,
+            kaon_stwist_a_a,
+            kaon_stwist_a2_a2,
+            kaon_stwist_fwd,
+            kaon_stwist_bwd,
+            kaon_stwist_3,
+        ],
+        plotdir,
+        plot_name="kaon_stwist_GEVP_BIG",
+        labels=[
+            r"$\gamma_5,\gamma_5$",
+            r"$\gamma_4\gamma_5,\gamma_4\gamma_5$",
+            r"$\gamma_2\gamma_5,\gamma_2\gamma_5$",
+            "fwd",
+            "bwd",
+            "3",
+        ],
+        # ylim=(-0.3, 0.3),
+        ylim=(-0.6, 0.6),
+    )
+    plot_eff_proj_corrs(
+        [
+            pion_utwist_ps_ps,
+            pion_utwist_a_a,
+            pion_utwist_a2_a2,
+            pion_utwist_fwd,
+            pion_utwist_bwd,
+            pion_utwist_3,
+        ],
+        plotdir,
+        plot_name="pion_utwist_GEVP_BIG",
+        labels=[
+            r"$\gamma_5,\gamma_5$",
+            r"$\gamma_4\gamma_5,\gamma_4\gamma_5$",
+            r"$\gamma_2\gamma_5,\gamma_2\gamma_5$",
+            "fwd",
+            "bwd",
+            "3",
+        ],
+        # ylim=(-0.3, 0.3),
+        ylim=(-0.6, 0.6),
+    )
+
+    threept_dir_utwist = "meson-3pt_US_SU_u-twist"
+    threept_dir_stwist = "meson-3pt_US_SU_s-twist"
+    threept_dir_utwist_stwist = "meson-3pt_US_SU_u-twist_s-twist"
+    threept_dir_pion_utwist = "meson-3pt_UU_SS_u-twist_s-twist"
+    threept_dir_kaon_stwist = "meson-3pt_UU_SS_u-twist_s-twist"
+    # threept_dir_pion = "meson-3pt_UU_SS_u-twist_s-twist"
+    # threept_dir_kaon = "meson-3pt_UU_SS_u-twist_s-twist"
+    threept_dir_pion = "meson-3pt_UU_SS"
+    threept_dir_kaon = "meson-3pt_UU_SS"
+
+    # ======================================================================
+    # pion twisted, kaon at rest
+    (
+        [p_k_fwd, k_p_fwd, p_p_fwd, k_k_fwd],
+        [
+            p_k_ps_ps,
+            k_p_ps_ps,
+            p_p_ps_ps,
+            k_k_ps_ps,
+        ],
+        [
+            p_k_a_a,
+            k_p_a_a,
+            p_p_a_a,
+            k_k_a_a,
+        ],
+    ) = meson_3pt_projections_big(
+        pickledir,
+        plotdir,
+        datadir,
+        evecs_twist[:2],
+        evecs_0twist[2:],
+        fwd_index=0,
+        p_k_dir=threept_dir_utwist,
+        k_p_dir=threept_dir_utwist,
+        p_p_dir=threept_dir_pion_utwist,
+        k_k_dir=threept_dir_kaon,
+        label="utwist",
+        kappa_1="kp121095kp121095",
+        kappa_2="kp120512kp121095",
+    )
+
+    # ======================================================================
+    # Make the ratios for the 3pt functions
+    tmax = 50
+    tau = 10
+
+    # ----------------------------------------------------------------------
+    # Ratio with two 3-point functions divided by two 2-point functions
+    ratio1_dbl_utwist_fwd = ratio1(
+        p_k_fwd, k_p_fwd, pion_utwist_fwd, kaon_fwd, energy_factor_utwist, norm_factor
+    )[:, :tmax]
+
+    plot_corr(
+        ratio1_dbl_utwist_fwd,
+        plotname="3pt_pi-k_double-ratio_GEVP_utwist_big",
+        plotdir=plotdir,
+        v_line=10,
+        ylim=(0.29, 0.32),
+    )
+
+    # ----------------------------------------------------------------------
+    # double ratio with PS-PS operators
+    ratio1_dbl_utwist_ps_ps = ratio1(
+        p_k_ps_ps,
+        k_p_ps_ps,
+        pion_utwist_ps_ps,
+        kaon_ps_ps,
+        energy_factor_utwist,
+        norm_factor,
+    )[:, :tmax]
+
+    # ----------------------------------------------------------------------
+    # double ratio with A-A operators
+    ratio1_dbl_utwist_a_a = ratio1(
+        p_k_a_a,
+        k_p_a_a,
+        pion_utwist_a_a,
+        kaon_a_a,
+        energy_factor_utwist,
+        norm_factor,
+    )[:, :tmax]
+
+    # ----------------------------------------------------------------------
+    # Plot all ratio1
+    plot_proj_corrs(
+        [ratio1_dbl_utwist_ps_ps, ratio1_dbl_utwist_a_a, ratio1_dbl_utwist_fwd],
+        plotdir,
+        plot_name="_kaon_and_pion_dbl_ratio1_utwist_big",
+        labels=[r"$\gamma_5,\gamma_5$", r"$\gamma_4\gamma_5,\gamma_4\gamma_5$", "GEVP"],
+        ylim=(0.29, 0.32),
+        title="u-quark twisted",
+        ylabel=r"$R_1(t)$",
+    )
+
+    fit_correlator(
+        ratio1_dbl_utwist_fwd,
+        plotdir,
+        datadir,
+        name="3pt_ratio1_kpi_u-twist_fwd_fit_big",
+        ylabel=r"$R_1(t)$",
+        ylim=(0.29, 0.32),
+        # time_limits=np.array([[[11, 35], [13, 35]]]),
+        time_limits=np.array([[[11, 25], [13, 25]]]),
+    )
+
+    # CANNOT DO THIS YET! DON'T HAVE THE K->K and pi->pi WITHOUT MOMENTA!!!
+    # ----------------------------------------------------------------------
+    # Ratio 2 with all four 3-point functions
+    denominator = np.abs(k_k_fwd[:, :tmax] * p_p_fwd[:, :tmax]) ** (-1)
+    numerator = np.abs(p_k_fwd[:, :tmax] * k_p_fwd[:, :tmax])
+    bsdata_7a = np.sqrt(np.einsum("ij,ij->ij", numerator, denominator))
+    quad_ratio_bs = np.einsum("ij,i->ij", bsdata_7a, energy_factor_utwist)
+
+    plot_corr(
+        quad_ratio_bs[11:],
+        plotname="3pt_pi-k_quad-ratio_u-twist_fwd",
+        plotdir=plotdir,
+        # v_line=10,
+    )
+    plot_corr(
+        quad_ratio_bs,
+        plotname="3pt_pi-k_quad-ratio_u-twist_fwd_ylim",
+        plotdir=plotdir,
+        v_line=10,
+        ylim=(0.29, 0.4),
+        # ylim=(0.29, 0.32),
+    )
+
+    # ----------------------------------------------------------------------
+    # Ratio 2 with all four 3-point functions for g5-g5 operators
+    denominator = np.abs(k_k_ps_ps[:, :tmax] * p_p_ps_ps[:, :tmax]) ** (-1)
+    numerator = np.abs(p_k_ps_ps[:, :tmax] * k_p_ps_ps[:, :tmax])
+    bsdata_7a = np.sqrt(np.einsum("ij,ij->ij", numerator, denominator))
+    quad_ratio_bs_ps_ps = np.einsum("ij,i->ij", bsdata_7a, energy_factor_utwist)
+    plot_corr(
+        quad_ratio_bs_ps_ps,
+        plotname="3pt_pi-k_quad-ratio_u-twist_ps_ps_ylim",
+        plotdir=plotdir,
+        v_line=10,
+        ylim=(0.29, 0.4),
+    )
+
+    # ----------------------------------------------------------------------
+    # Ratio 2 with all four 3-point functions for g4g5-g4g5 operators
+    denominator = np.abs(k_k_a_a[:, :tmax] * p_p_a_a[:, :tmax]) ** (-1)
+    numerator = np.abs(p_k_a_a[:, :tmax] * k_p_a_a[:, :tmax])
+    bsdata_7a = np.sqrt(np.einsum("ij,ij->ij", numerator, denominator))
+    quad_ratio_bs_a_a = np.einsum("ij,i->ij", bsdata_7a, energy_factor_utwist)
+    plot_corr(
+        quad_ratio_bs_a_a,
+        plotname="3pt_pi-k_quad-ratio_u-twist_a_a_ylim",
+        plotdir=plotdir,
+        v_line=10,
+        ylim=(0.29, 0.4),
+    )
+
+    # ----------------------------------------------------------------------
+    # Ratio_2 comparison
+    plot_proj_corrs(
+        [quad_ratio_bs_ps_ps,quad_ratio_bs_a_a, quad_ratio_bs],
+        plotdir,
+        plot_name="_kaon_and_pion_quad_ratio2_utwist_big",
+        labels=[r"$\gamma_5,\gamma_5$", r"$\gamma_4\gamma_5,\gamma_4\gamma_5$", "GEVP"],
+        ylim=(0.29, 0.4),
+        # ylim=(0.2, 0.8),
+        # ylim=(0.29, 0.32),
+        title="u-quark twisted",
+        ylabel=r"$R_2(t)$",
+    )
+
+    # ======================================================================
+    # pion at rest, kaon twisted
+    # s-twist
+    (
+        [p_k_fwd, k_p_fwd, p_p_fwd, k_k_fwd],
+        [
+            p_k_ps_ps,
+            k_p_ps_ps,
+            p_p_ps_ps,
+            k_k_ps_ps,
+        ],
+        [
+            p_k_a_a,
+            k_p_a_a,
+            p_p_a_a,
+            k_k_a_a,
+        ],
+    ) = meson_3pt_projections_big(
+        pickledir,
+        plotdir,
+        datadir,
+        evecs_0twist[:2],
+        evecs_twist[2:],
+        fwd_index=0,
+        p_k_dir=threept_dir_stwist,
+        k_p_dir=threept_dir_stwist,
+        p_p_dir=threept_dir_pion,
+        k_k_dir=threept_dir_kaon_stwist,
+        label="stwist",
+        kappa_1="kp121095kp121095",
+        kappa_2="kp120512kp121095",
+    )
+    # ======================================================================
+    # Make the ratios for the 3pt functions
+    tmax = 50
+    tau = 10
+
+    # ----------------------------------------------------------------------
+    # Ratio with two 3-point functions divided by two 2-point functions
+    ratio1_dbl_stwist_fwd = ratio1(
+        p_k_fwd, k_p_fwd, pion_fwd, kaon_stwist_fwd, energy_factor_stwist, norm_factor
+    )[:, :tmax]
+
+    plot_corr(
+        ratio1_dbl_stwist_fwd,
+        plotname="3pt_pi-k_double-ratio_gevp_stwist_big",
+        plotdir=plotdir,
+        v_line=10,
+        ylim=(0.29, 0.32),
+    )
+
+    # ----------------------------------------------------------------------
+    # double ratio with PS-PS operators
+    ratio1_dbl_stwist_ps_ps = ratio1(
+        p_k_ps_ps,
+        k_p_ps_ps,
+        pion_ps_ps,
+        kaon_stwist_ps_ps,
+        energy_factor_stwist,
+        norm_factor,
+    )[:, :tmax]
+
+    # ----------------------------------------------------------------------
+    # double ratio with A-A operators
+    ratio1_dbl_stwist_a_a = ratio1(
+        p_k_a_a,
+        k_p_a_a,
+        pion_a_a,
+        kaon_stwist_a_a,
+        energy_factor_stwist,
+        norm_factor,
+    )[:, :tmax]
+
+    # ----------------------------------------------------------------------
+    # Plot all ratio1
+    plot_proj_corrs(
+        # [bsdata_dbl_ps_ps, bsdata_dbl_a_a, bsdata_dbl],
+        [ratio1_dbl_stwist_ps_ps, ratio1_dbl_stwist_a_a, ratio1_dbl_stwist_fwd],
+        plotdir,
+        plot_name="_kaon_and_pion_dbl_ratio1_stwist_big",
+        labels=[r"$\gamma_5,\gamma_5$", r"$\gamma_4\gamma_5,\gamma_4\gamma_5$", "GEVP"],
+        ylim=(0.29, 0.32),
+        title="s-quark twisted",
+        ylabel=r"$R_1(t)$",
+    )
+    fit_correlator(
+        ratio1_dbl_stwist_fwd,
+        plotdir,
+        datadir,
+        name="3pt_ratio1_kpi_s-twist_fwd_fit_big",
+        ylabel=r"$R_1(t)$",
+        ylim=(0.29, 0.32),
+        time_limits=np.array([[[11, 25], [13, 25]]]),
+        # time_limits=np.array([[[11, 35], [13, 35]]]),
+    )
+
+    # CANNOT DO THIS YET! DON'T HAVE THE K->K and pi->pi WITHOUT MOMENTA!!!
+    # ----------------------------------------------------------------------
+    # Ratio 2 with all four 3-point functions
+    denominator = np.abs(k_k_fwd[:, :tmax] * p_p_fwd[:, :tmax]) ** (-1)
+    numerator = np.abs(p_k_fwd[:, :tmax] * k_p_fwd[:, :tmax])
+    bsdata_7a = np.sqrt(np.einsum("ij,ij->ij", numerator, denominator))
+    quad_ratio_bs = np.einsum("ij,i->ij", bsdata_7a, energy_factor_stwist)
+
+    plot_corr(
+        quad_ratio_bs[11:],
+        plotname="3pt_pi-k_quad-ratio_s-twist_fwd",
+        plotdir=plotdir,
+        # v_line=10,
+    )
+    plot_corr(
+        quad_ratio_bs,
+        plotname="3pt_pi-k_quad-ratio_s-twist_fwd_ylim",
+        plotdir=plotdir,
+        v_line=10,
+        ylim=(0.29, 0.45),
+        # ylim=(0.29, 0.32),
+        # ylim=(0.5, 1),
+    )
+
+    # ----------------------------------------------------------------------
+    # Ratio 2 with all four 3-point functions for g5-g5 operators
+    denominator = np.abs(k_k_ps_ps[:, :tmax] * p_p_ps_ps[:, :tmax]) ** (-1)
+    numerator = np.abs(p_k_ps_ps[:, :tmax] * k_p_ps_ps[:, :tmax])
+    bsdata_7a = np.sqrt(np.einsum("ij,ij->ij", numerator, denominator))
+    quad_ratio_bs_ps_ps = np.einsum("ij,i->ij", bsdata_7a, energy_factor_stwist)
+    plot_corr(
+        quad_ratio_bs_ps_ps,
+        plotname="3pt_pi-k_quad-ratio_s-twist_ps_ps_ylim",
+        plotdir=plotdir,
+        v_line=10,
+        ylim=(0.29, 0.45),
+    )
+
+    # ----------------------------------------------------------------------
+    # Ratio 2 with all four 3-point functions for g4g5-g4g5 operators
+    denominator = np.abs(k_k_a_a[:, :tmax] * p_p_a_a[:, :tmax]) ** (-1)
+    numerator = np.abs(p_k_a_a[:, :tmax] * k_p_a_a[:, :tmax])
+    bsdata_7a = np.sqrt(np.einsum("ij,ij->ij", numerator, denominator))
+    quad_ratio_bs_a_a = np.einsum("ij,i->ij", bsdata_7a, energy_factor_stwist)
+    plot_corr(
+        quad_ratio_bs_a_a,
+        plotname="3pt_pi-k_quad-ratio_s-twist_a_a_ylim",
+        plotdir=plotdir,
+        v_line=10,
+        ylim=(0.29, 0.45),
+    )
+
+    # ----------------------------------------------------------------------
+    # Ratio_2 comparison
+    plot_proj_corrs(
+        [quad_ratio_bs_ps_ps,quad_ratio_bs_a_a, quad_ratio_bs],
+        plotdir,
+        plot_name="_kaon_and_pion_quad_ratio2_stwist_big",
+        labels=[r"$\gamma_5,\gamma_5$", r"$\gamma_4\gamma_5,\gamma_4\gamma_5$", "GEVP"],
+        ylim=(0.29, 0.45),
+        # ylim=(0.2, 0.8),
+        # ylim=(0.29, 0.32),
+        title="s-quark twisted",
+        ylabel=r"$R_2(t)$",
+    )
+    
+    return
+
+def meson_gevp_big_b5p50kp121095kp120512_test():
+    """
+    Read the meson 3pt functions and 2pt functions. Construct a ratio to fit and plot
+    For 3pt correlators at qsq_max
+    Making ratios which should equal the renormalised matrix element
+    Use the projected operators for the pion and kaon (mixing PS and A_4 operators)
+    """
+
+    mystyle = Path("mystyle.txt")
+    plt.style.use(mystyle.as_posix())
+    plt.rc("text.latex", preamble=r"\usepackage{physics}")
+    # plotdir = Path("./plots/twisted/")
+    plotdir = Path("./plots/b5p50kp121095kp120512/twisted_gevp_big_test/")
+    datadir = Path("./data/b5p50kp121095kp120512/twisted_gevp_big_test/")
+    datadir.mkdir(parents=True, exist_ok=True)
+    plotdir.mkdir(parents=True, exist_ok=True)
+
+    nboot = 500
+    nbin = 1
+    conf_num_u = "497"
+    # ======================================================================
+    # Open two-point function data for zero twist
+    twopt_datadir = Path(
+        "/Users/mbatelaan/Research/Adelaide2026/analysis/six_point_fn/data/pickles/b5p50kp121095kp120512_qsqmax_g8/"
+    )
+    with open(
+        twopt_datadir / (f"time_window_loop_pion_1exp_2exp.pkl"), "rb"
+    ) as file_in:
+        fitlist_pion_cosh = pickle.load(file_in)
+    with open(
+        twopt_datadir / (f"time_window_loop_kaon_1exp_2exp.pkl"), "rb"
+    ) as file_in:
+        fitlist_kaon_cosh = pickle.load(file_in)
+
+    weights_pion = np.array([i["weight"] for i in fitlist_pion_cosh])
+    high_weight_pion = np.argmax(weights_pion)
+    pion_energy = fitlist_pion_cosh[high_weight_pion]["param"][:, 1]
+    pion_fit = fitlist_pion_cosh[high_weight_pion]["param"]
+    print("pion energy = ", np.average(pion_energy))
+
+    weights_kaon = np.array([i["weight"] for i in fitlist_kaon_cosh])
+    high_weight_kaon = np.argmax(weights_kaon)
+    kaon_energy = fitlist_kaon_cosh[high_weight_kaon]["param"][:, 1]
+    kaon_fit = fitlist_kaon_cosh[high_weight_kaon]["param"]
+    print("kaon energy = ", np.average(kaon_energy))
+
+    # ----------------------------------------------------------------------
+    # Twisted energies
+    pion_utwist_file = Path(
+        "/Users/mbatelaan/Research/Adelaide2026/analysis/six_point_fn/data/pickles/b5p50kp121095kp120512_u-twist0.64461_g8/time_window_loop_pion_1exp_2exp.pkl"
+    )
+    kaon_stwist_file = Path(
+        "/Users/mbatelaan/Research/Adelaide2026/analysis/six_point_fn/data/pickles/b5p50kp121095kp120512_s-twist1.08508_g8/time_window_loop_kaon_1exp_2exp.pkl"
+    )
+    if pion_utwist_file.is_file():
+        with open(pion_utwist_file, "rb") as file_in:
+            fitlist_pion_utwist = pickle.load(file_in)
+    else:
+        print("pion u-twist two-point function fit not found")
+        exit()
+    if kaon_stwist_file.is_file():
+        with open(kaon_stwist_file, "rb") as file_in:
+            fitlist_kaon_stwist = pickle.load(file_in)
+    else:
+        print("kaon s-twist two-point function fit not found")
+        exit()
+
+    weights_pion_utwist = np.array([i["weight"] for i in fitlist_pion_utwist])
+    sort_weight = np.argsort(weights_pion_utwist)[::-1]
+    pion_fit_utwist = fitlist_pion_utwist[sort_weight[0]]["param"]
+    pion_utwist_energy = pion_fit_utwist[:, 1]
+
+    weights_kaon_stwist = np.array([i["weight"] for i in fitlist_kaon_stwist])
+    sort_weight = np.argsort(weights_kaon_stwist)[::-1]
+    kaon_fit_stwist = fitlist_kaon_stwist[sort_weight[0]]["param"]
+    kaon_stwist_energy = kaon_fit_stwist[:, 1]
+
+    # ======================================================================
+    energy_factor_utwist = np.sqrt(4 * pion_utwist_energy * kaon_energy)
+    energy_factor_stwist = np.sqrt(4 * pion_energy * kaon_stwist_energy)
+    norm_factor = 0.863
+    print("\n\nenergy factors:")
+    print("utwist = ", np.average(energy_factor_utwist))
+    print("stwist = ", np.average(energy_factor_stwist))
+    print("\n\n")
+    print("pion energy = ", np.average(pion_energy))
+    print("kaon energy = ", np.average(kaon_energy))
+    print("utwist energy = ", np.average(pion_utwist_energy))
+    print("stwist energy = ", np.average(kaon_stwist_energy))
+    print("\n\n")
+
+    L = 32
+    utwist = 0.64461
+    stwist = 1.08508
+
+    print(utwist)
+    print(stwist)
+
+    qsq_val_utwist = (pion_utwist_energy - kaon_energy) ** 2 - (utwist * np.pi / L) ** 2
+    qsq_val_stwist = (pion_energy - kaon_stwist_energy) ** 2 - (stwist * np.pi / L) ** 2
+    print(f"{np.average(qsq_val_utwist)=}")
+    print(f"{np.std(qsq_val_utwist)=}")
+
+    print(f"{np.average(qsq_val_stwist)=}")
+    print(f"{np.std(qsq_val_stwist)=}")
+    print("\n\n")
+
+    # ======================================================================
+    # Read the 2pt functions and do the GEVP to get the e-vecs
+    # pickledir = Path("./threept_run4")
+    # pickledir = Path("./threept_run5")
+    pickledir = Path("./b5p50kp121095kp120512/threept_u-twist0.64461_s-twist1.08508_g8")
+    pion_dir = "meson_qcdsf"
+    kaon_dir = "meson_qcdsf"
+    time_choice = 29
+    delta_t = 6
+    # time_choice = 4
+    # delta_t = 3
+    evals_0twist, evecs_0twist, Gt_0twist, mesons_2pt = meson_2pt_projections(
+        pickledir,
+        plotdir,
+        datadir,
+        pion_dir=pion_dir,
+        kaon_dir=kaon_dir,
+        time_choice=time_choice,
+        delta_t=delta_t,
+        label="0twist",
+        kappa_1="kp121095kp121095",
+        kappa_2="kp120512kp121095",
+    )
+    evecs_0twist_temp = []
+    for evec in evecs_0twist:
+        evecs_0twist_temp.append(evec[:, ::-1])
+    evecs_0twist = evecs_0twist_temp
+
+    print("\n\nNow twist")
+    pion_dir_twist = "meson-2pt_u-twist"
+    kaon_dir_twist = "meson-2pt_s-twist"
+    # pion_dir_twist = "meson-2pt_TBC"
+    # kaon_dir_twist = "meson-2pt_TBC"
+    # Good choice for the kaon:
+    # time_choice = 7
+    # delta_t = 3
+    # Pretty good for both:
+    # time_choice = 20
+    # delta_t = 11
+    # time_choice = 9
+    # delta_t = 4
+
+    # time_choice = 4
+    # delta_t = 3
+    # time_choice = 28
+    # delta_t = 4
+
+    # Good choice
+    time_choice = 4
+    delta_t = 2
+
+    (
+        evals_twist,
+        evecs_twist,
+        Gt_twist,
+        mesons_2pt_twist,
+        corr_matrix_pions,
+        corr_matrix_kaons,
+    ) = meson_2pt_projections_big(
+        pickledir,
+        plotdir,
+        datadir,
+        pion_dir=pion_dir_twist,
+        kaon_dir=kaon_dir_twist,
+        time_choice=time_choice,
+        delta_t=delta_t,
+        label="utwist-stwist",
+        kappa_1="kp121095kp121095",
+        kappa_2="kp120512kp121095",
+    )
+    print("evecs")
+    print(np.shape(evecs_twist))
+    print(evecs_twist[0])
+    fwd_index=0
+
+    pion_ps_ps = mesons_2pt[0]
+    kaon_ps_ps = mesons_2pt[1]
+    pion_a_a = mesons_2pt[2]
+    kaon_a_a = mesons_2pt[3]
+    pion_utwist_ps_ps = mesons_2pt_twist[0]
+    kaon_stwist_ps_ps = mesons_2pt_twist[1]
+    pion_utwist_a_a = mesons_2pt_twist[2]
+    kaon_stwist_a_a = mesons_2pt_twist[3]
+    pion_utwist_a2_a2 = mesons_2pt_twist[4]
+    kaon_stwist_a2_a2 = mesons_2pt_twist[5]
+    pion_fwd = Gt_0twist[2]
+    kaon_fwd = Gt_0twist[3]
+    pion_bwd = Gt_0twist[0]
+    kaon_bwd = Gt_0twist[1]
+    if fwd_index ==0:
+        pion_utwist_fwd = Gt_twist[0]
+        kaon_stwist_fwd = Gt_twist[1]
+        pion_utwist_bwd = Gt_twist[2]
+        kaon_stwist_bwd = Gt_twist[3]
+        pion_utwist_3 = Gt_twist[4]
+        kaon_stwist_3 = Gt_twist[5]
+        
+    elif fwd_index == 1:
+        pion_utwist_fwd = Gt_twist[2]
+        kaon_stwist_fwd = Gt_twist[3]
+        pion_utwist_bwd = Gt_twist[0]
+        kaon_stwist_bwd = Gt_twist[1]
+        pion_utwist_3 = Gt_twist[4]
+        kaon_stwist_3 = Gt_twist[5]
+        evecs_twist_temp = []
+        for evec in evecs_twist:
+            evecs_twist_temp.append(evec[:, [1,0,2]])
+        evecs_twist = evecs_twist_temp
+
+    pion_utwist_ps_a2 = corr_matrix_pions[0, 2]
+    pion_utwist_a_a2 = corr_matrix_pions[1, 2]
+    pion_utwist_a2_ps = corr_matrix_pions[2, 0]
+    pion_utwist_a2_a = corr_matrix_pions[2, 1]
+    kaon_stwist_ps_a2 = corr_matrix_kaons[0, 2]
+    kaon_stwist_a_a2 = corr_matrix_kaons[1, 2]
+    kaon_stwist_a2_ps = corr_matrix_kaons[2, 0]
+    kaon_stwist_a2_a = corr_matrix_kaons[2, 1]
+
+    plot_eff_proj_corrs(
+        [pion_ps_ps, pion_a_a, pion_fwd, pion_bwd],
+        plotdir,
+        plot_name="pion_GEVP_big",
+        labels=[
+            r"$\gamma_5,\gamma_5$",
+            r"$\gamma_4\gamma_5,\gamma_4\gamma_5$",
+            "fwd",
+            "bwd",
+        ],
+        ylim=(-0.3, 0.3),
+    )
+    plot_eff_proj_corrs(
+        [kaon_ps_ps, kaon_a_a, kaon_fwd, kaon_bwd],
+        plotdir,
+        plot_name="kaon_GEVP_BIG",
+        labels=[
+            r"$\gamma_5,\gamma_5$",
+            r"$\gamma_4\gamma_5,\gamma_4\gamma_5$",
+            "fwd",
+            "bwd",
+        ],
+        ylim=(-0.3, 0.3),
+    )
+    plot_eff_proj_corrs(
+        [
+            kaon_stwist_ps_ps,
+            kaon_stwist_a_a,
+            kaon_stwist_a2_a2,
+            kaon_stwist_fwd,
+            kaon_stwist_bwd,
+            kaon_stwist_3,
+        ],
+        plotdir,
+        plot_name="kaon_stwist_GEVP_BIG",
+        labels=[
+            r"$\gamma_5,\gamma_5$",
+            r"$\gamma_4\gamma_5,\gamma_4\gamma_5$",
+            r"$\gamma_2\gamma_5,\gamma_2\gamma_5$",
+            "fwd",
+            "bwd",
+            "3",
+        ],
+        # ylim=(-0.3, 0.3),
+        ylim=(-0.6, 0.6),
+    )
+    plot_eff_proj_corrs(
+        [
+            pion_utwist_ps_ps,
+            pion_utwist_a_a,
+            pion_utwist_a2_a2,
+            pion_utwist_fwd,
+            pion_utwist_bwd,
+            pion_utwist_3,
+        ],
+        plotdir,
+        plot_name="pion_utwist_GEVP_BIG",
+        labels=[
+            r"$\gamma_5,\gamma_5$",
+            r"$\gamma_4\gamma_5,\gamma_4\gamma_5$",
+            r"$\gamma_2\gamma_5,\gamma_2\gamma_5$",
+            "fwd",
+            "bwd",
+            "3",
+        ],
+        # ylim=(-0.3, 0.3),
+        ylim=(-0.6, 0.6),
+    )
+
+    threept_dir_utwist = "meson-3pt_US_SU_u-twist"
+    threept_dir_stwist = "meson-3pt_US_SU_s-twist"
+    threept_dir_utwist_stwist = "meson-3pt_US_SU_u-twist_s-twist"
+    threept_dir_pion_utwist = "meson-3pt_UU_SS_u-twist_s-twist"
+    threept_dir_kaon_stwist = "meson-3pt_UU_SS_u-twist_s-twist"
+    # threept_dir_pion = "meson-3pt_UU_SS_u-twist_s-twist"
+    # threept_dir_kaon = "meson-3pt_UU_SS_u-twist_s-twist"
+    threept_dir_pion = "meson-3pt_UU_SS"
+    threept_dir_kaon = "meson-3pt_UU_SS"
+
+    fwd_index=0
+    # ======================================================================
+    # pion twisted, kaon at rest
+    (
+        [p_k_fwd, k_p_fwd, p_p_fwd, k_k_fwd],
+        [
+            p_k_ps_ps,
+            k_p_ps_ps,
+            p_p_ps_ps,
+            k_k_ps_ps,
+        ],
+        [
+            p_k_a_a,
+            k_p_a_a,
+            p_p_a_a,
+            k_k_a_a,
+        ],
+    ) = meson_3pt_projections_big(
+        pickledir,
+        plotdir,
+        datadir,
+        evecs_twist[:2],
+        evecs_0twist[2:],
+        fwd_index=fwd_index,
+        p_k_dir=threept_dir_utwist,
+        k_p_dir=threept_dir_utwist,
+        p_p_dir=threept_dir_pion_utwist,
+        k_k_dir=threept_dir_kaon,
+        label="utwist",
+        kappa_1="kp121095kp121095",
+        kappa_2="kp120512kp121095",
+    )
+
+    # ======================================================================
+    # Make the ratios for the 3pt functions
+    tmax = 50
+    tau = 10
+
+    # ----------------------------------------------------------------------
+    # Ratio with two 3-point functions divided by two 2-point functions
+    ratio1_dbl_utwist_fwd = ratio1(
+        p_k_fwd, k_p_fwd, pion_utwist_fwd, kaon_fwd, energy_factor_utwist, norm_factor
+    )[:, :tmax]
+
+    plot_corr(
+        ratio1_dbl_utwist_fwd,
+        plotname="3pt_pi-k_double-ratio_GEVP_utwist_big",
+        plotdir=plotdir,
+        v_line=10,
+        ylim=(0.29, 0.32),
+    )
+
+    # ----------------------------------------------------------------------
+    # double ratio with PS-PS operators
+    ratio1_dbl_utwist_ps_ps = ratio1(
+        p_k_ps_ps,
+        k_p_ps_ps,
+        pion_utwist_ps_ps,
+        kaon_ps_ps,
+        energy_factor_utwist,
+        norm_factor,
+    )[:, :tmax]
+
+    # ----------------------------------------------------------------------
+    # double ratio with A-A operators
+    ratio1_dbl_utwist_a_a = ratio1(
+        p_k_a_a,
+        k_p_a_a,
+        pion_utwist_a_a,
+        kaon_a_a,
+        energy_factor_utwist,
+        norm_factor,
+    )[:, :tmax]
+
+    # ----------------------------------------------------------------------
+    # Plot all ratio1
+    plot_proj_corrs(
+        [ratio1_dbl_utwist_ps_ps, ratio1_dbl_utwist_a_a, ratio1_dbl_utwist_fwd],
+        plotdir,
+        plot_name="_kaon_and_pion_dbl_ratio1_utwist_big",
+        labels=[r"$\gamma_5,\gamma_5$", r"$\gamma_4\gamma_5,\gamma_4\gamma_5$", "GEVP"],
+        ylim=(0.29, 0.32),
+        title="u-quark twisted",
+        ylabel=r"$R_1(t)$",
+    )
+
+    fit_correlator(
+        ratio1_dbl_utwist_fwd,
+        plotdir,
+        datadir,
+        name="3pt_ratio1_kpi_u-twist_fwd_fit_big",
+        ylabel=r"$R_1(t)$",
+        ylim=(0.29, 0.32),
+        # time_limits=np.array([[[11, 35], [13, 35]]]),
+        time_limits=np.array([[[11, 25], [13, 25]]]),
+    )
+
+    # CANNOT DO THIS YET! DON'T HAVE THE K->K and pi->pi WITHOUT MOMENTA!!!
+    # ----------------------------------------------------------------------
+    # Ratio 2 with all four 3-point functions
+    denominator = np.abs(k_k_fwd[:, :tmax] * p_p_fwd[:, :tmax]) ** (-1)
+    numerator = np.abs(p_k_fwd[:, :tmax] * k_p_fwd[:, :tmax])
+    bsdata_7a = np.sqrt(np.einsum("ij,ij->ij", numerator, denominator))
+    quad_ratio_bs = np.einsum("ij,i->ij", bsdata_7a, energy_factor_utwist)
+
+    plot_corr(
+        quad_ratio_bs[11:],
+        plotname="3pt_pi-k_quad-ratio_u-twist_fwd",
+        plotdir=plotdir,
+        # v_line=10,
+    )
+    plot_corr(
+        quad_ratio_bs,
+        plotname="3pt_pi-k_quad-ratio_u-twist_fwd_ylim",
+        plotdir=plotdir,
+        v_line=10,
+        ylim=(0.29, 0.4),
+        # ylim=(0.29, 0.32),
+    )
+
+    # ----------------------------------------------------------------------
+    # Ratio 2 with all four 3-point functions for g5-g5 operators
+    denominator = np.abs(k_k_ps_ps[:, :tmax] * p_p_ps_ps[:, :tmax]) ** (-1)
+    numerator = np.abs(p_k_ps_ps[:, :tmax] * k_p_ps_ps[:, :tmax])
+    bsdata_7a = np.sqrt(np.einsum("ij,ij->ij", numerator, denominator))
+    quad_ratio_bs_ps_ps = np.einsum("ij,i->ij", bsdata_7a, energy_factor_utwist)
+    plot_corr(
+        quad_ratio_bs_ps_ps,
+        plotname="3pt_pi-k_quad-ratio_u-twist_ps_ps_ylim",
+        plotdir=plotdir,
+        v_line=10,
+        ylim=(0.29, 0.4),
+    )
+
+    # ----------------------------------------------------------------------
+    # Ratio 2 with all four 3-point functions for g4g5-g4g5 operators
+    denominator = np.abs(k_k_a_a[:, :tmax] * p_p_a_a[:, :tmax]) ** (-1)
+    numerator = np.abs(p_k_a_a[:, :tmax] * k_p_a_a[:, :tmax])
+    bsdata_7a = np.sqrt(np.einsum("ij,ij->ij", numerator, denominator))
+    quad_ratio_bs_a_a = np.einsum("ij,i->ij", bsdata_7a, energy_factor_utwist)
+    plot_corr(
+        quad_ratio_bs_a_a,
+        plotname="3pt_pi-k_quad-ratio_u-twist_a_a_ylim",
+        plotdir=plotdir,
+        v_line=10,
+        ylim=(0.29, 0.4),
+    )
+
+    # ----------------------------------------------------------------------
+    # Ratio_2 comparison
+    plot_proj_corrs(
+        [quad_ratio_bs_ps_ps,quad_ratio_bs_a_a, quad_ratio_bs],
+        plotdir,
+        plot_name="_kaon_and_pion_quad_ratio2_utwist_big",
+        labels=[r"$\gamma_5,\gamma_5$", r"$\gamma_4\gamma_5,\gamma_4\gamma_5$", "GEVP"],
+        ylim=(0.29, 0.4),
+        # ylim=(0.2, 0.8),
+        # ylim=(0.29, 0.32),
+        title="u-quark twisted",
+        ylabel=r"$R_2(t)$",
+    )
+
+    # ======================================================================
+    # pion at rest, kaon twisted
+    # s-twist
+    (
+        [p_k_fwd, k_p_fwd, p_p_fwd, k_k_fwd],
+        [
+            p_k_ps_ps,
+            k_p_ps_ps,
+            p_p_ps_ps,
+            k_k_ps_ps,
+        ],
+        [
+            p_k_a_a,
+            k_p_a_a,
+            p_p_a_a,
+            k_k_a_a,
+        ],
+    ) = meson_3pt_projections_big(
+        pickledir,
+        plotdir,
+        datadir,
+        evecs_0twist[:2],
+        evecs_twist[2:],
+        fwd_index=fwd_index,
+        p_k_dir=threept_dir_stwist,
+        k_p_dir=threept_dir_stwist,
+        p_p_dir=threept_dir_pion,
+        k_k_dir=threept_dir_kaon_stwist,
+        label="stwist",
+        kappa_1="kp121095kp121095",
+        kappa_2="kp120512kp121095",
+    )
+    # ======================================================================
+    # Make the ratios for the 3pt functions
+    tmax = 50
+    tau = 10
+
+    # ----------------------------------------------------------------------
+    # Ratio with two 3-point functions divided by two 2-point functions
+    ratio1_dbl_stwist_fwd = ratio1(
+        p_k_fwd, k_p_fwd, pion_fwd, kaon_stwist_fwd, energy_factor_stwist, norm_factor
+    )[:, :tmax]
+
+    plot_corr(
+        ratio1_dbl_stwist_fwd,
+        plotname="3pt_pi-k_double-ratio_gevp_stwist_big",
+        plotdir=plotdir,
+        v_line=10,
+        ylim=(0.29, 0.32),
+    )
+
+    # ----------------------------------------------------------------------
+    # double ratio with PS-PS operators
+    ratio1_dbl_stwist_ps_ps = ratio1(
+        p_k_ps_ps,
+        k_p_ps_ps,
+        pion_ps_ps,
+        kaon_stwist_ps_ps,
+        energy_factor_stwist,
+        norm_factor,
+    )[:, :tmax]
+
+    # ----------------------------------------------------------------------
+    # double ratio with A-A operators
+    ratio1_dbl_stwist_a_a = ratio1(
+        p_k_a_a,
+        k_p_a_a,
+        pion_a_a,
+        kaon_stwist_a_a,
+        energy_factor_stwist,
+        norm_factor,
+    )[:, :tmax]
+
+    # ----------------------------------------------------------------------
+    # Plot all ratio1
+    plot_proj_corrs(
+        # [bsdata_dbl_ps_ps, bsdata_dbl_a_a, bsdata_dbl],
+        [ratio1_dbl_stwist_ps_ps, ratio1_dbl_stwist_a_a, ratio1_dbl_stwist_fwd],
+        plotdir,
+        plot_name="_kaon_and_pion_dbl_ratio1_stwist_big",
+        labels=[r"$\gamma_5,\gamma_5$", r"$\gamma_4\gamma_5,\gamma_4\gamma_5$", "GEVP"],
+        ylim=(0.29, 0.32),
+        title="s-quark twisted",
+        ylabel=r"$R_1(t)$",
+    )
+    fit_correlator(
+        ratio1_dbl_stwist_fwd,
+        plotdir,
+        datadir,
+        name="3pt_ratio1_kpi_s-twist_fwd_fit_big",
+        ylabel=r"$R_1(t)$",
+        ylim=(0.29, 0.32),
+        time_limits=np.array([[[11, 25], [13, 25]]]),
+        # time_limits=np.array([[[11, 35], [13, 35]]]),
+    )
+
+    # CANNOT DO THIS YET! DON'T HAVE THE K->K and pi->pi WITHOUT MOMENTA!!!
+    # ----------------------------------------------------------------------
+    # Ratio 2 with all four 3-point functions
+    denominator = np.abs(k_k_fwd[:, :tmax] * p_p_fwd[:, :tmax]) ** (-1)
+    numerator = np.abs(p_k_fwd[:, :tmax] * k_p_fwd[:, :tmax])
+    bsdata_7a = np.sqrt(np.einsum("ij,ij->ij", numerator, denominator))
+    quad_ratio_bs = np.einsum("ij,i->ij", bsdata_7a, energy_factor_stwist)
+
+    plot_corr(
+        quad_ratio_bs[11:],
+        plotname="3pt_pi-k_quad-ratio_s-twist_fwd",
+        plotdir=plotdir,
+        # v_line=10,
+    )
+    plot_corr(
+        quad_ratio_bs,
+        plotname="3pt_pi-k_quad-ratio_s-twist_fwd_ylim",
+        plotdir=plotdir,
+        v_line=10,
+        ylim=(0.29, 0.45),
+        # ylim=(0.29, 0.32),
+        # ylim=(0.5, 1),
+    )
+
+    # ----------------------------------------------------------------------
+    # Ratio 2 with all four 3-point functions for g5-g5 operators
+    denominator = np.abs(k_k_ps_ps[:, :tmax] * p_p_ps_ps[:, :tmax]) ** (-1)
+    numerator = np.abs(p_k_ps_ps[:, :tmax] * k_p_ps_ps[:, :tmax])
+    bsdata_7a = np.sqrt(np.einsum("ij,ij->ij", numerator, denominator))
+    quad_ratio_bs_ps_ps = np.einsum("ij,i->ij", bsdata_7a, energy_factor_stwist)
+    plot_corr(
+        quad_ratio_bs_ps_ps,
+        plotname="3pt_pi-k_quad-ratio_s-twist_ps_ps_ylim",
+        plotdir=plotdir,
+        v_line=10,
+        ylim=(0.29, 0.45),
+    )
+
+    # ----------------------------------------------------------------------
+    # Ratio 2 with all four 3-point functions for g4g5-g4g5 operators
+    denominator = np.abs(k_k_a_a[:, :tmax] * p_p_a_a[:, :tmax]) ** (-1)
+    numerator = np.abs(p_k_a_a[:, :tmax] * k_p_a_a[:, :tmax])
+    bsdata_7a = np.sqrt(np.einsum("ij,ij->ij", numerator, denominator))
+    quad_ratio_bs_a_a = np.einsum("ij,i->ij", bsdata_7a, energy_factor_stwist)
+    plot_corr(
+        quad_ratio_bs_a_a,
+        plotname="3pt_pi-k_quad-ratio_s-twist_a_a_ylim",
+        plotdir=plotdir,
+        v_line=10,
+        ylim=(0.29, 0.45),
+    )
+
+    # ----------------------------------------------------------------------
+    # Ratio_2 comparison
+    plot_proj_corrs(
+        [quad_ratio_bs_ps_ps,quad_ratio_bs_a_a, quad_ratio_bs],
+        plotdir,
+        plot_name="_kaon_and_pion_quad_ratio2_stwist_big",
+        labels=[r"$\gamma_5,\gamma_5$", r"$\gamma_4\gamma_5,\gamma_4\gamma_5$", "GEVP"],
+        ylim=(0.29, 0.45),
+        # ylim=(0.2, 0.8),
+        # ylim=(0.29, 0.32),
+        title="s-quark twisted",
+        ylabel=r"$R_2(t)$",
+    )
+    
+    return
+
+
 if __name__ == "__main__":
     np.set_printoptions(linewidth=400)
-    meson_gevp_big_b5p50kp121040kp120620()
-    # meson_gevp_twist()
     # meson_gevp_big()
+    # meson_gevp_big_b5p50kp121040kp120620()
+    # meson_gevp_twist()
+    # meson_gevp_big_b5p50kp121095kp120512()
+    meson_gevp_big_b5p50kp121095kp120512_test()
